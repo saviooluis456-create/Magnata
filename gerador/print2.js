@@ -27,7 +27,7 @@ const EV = [
 ];
 const VIVAS = [C.vermelho, C.amarelo, C.verde, C.azul, C.laranja, C.rosa, C.ciano, C.roxo];
 // Ilustração-adesivo sempre colorida: escolhe três cores vivas diferentes do fundo onde ela pousa
-const st = (name, size, t, i, rot = 0) => { const set = [t.a, t.b, ...VIVAS].filter((c, j, a) => c && c !== '#FFFFFF' && c !== '#ffffff' && c !== t.p && a.indexOf(c) === j); const n = set.length; return `<div style="transform:rotate(${rot}deg)">${K.il(name, size, { a: set[i % n], b: set[(i + 1) % n], c: set[(i + 3) % n], k: C.navy, w: '#fff' }, 'adesivo')}</div>`; };
+const st = (name, size, t, i, rot = 0) => { const set = [t.a, t.b, ...VIVAS].filter((c, j, a) => c && c !== '#FFFFFF' && c !== '#ffffff' && c !== t.p && a.indexOf(c) === j); const n = set.length; return `<div style="transform:rotate(${rot}deg)">${K.il(name, size, { a: set[i % n], b: set[(i + 1) % n], c: set[(i + 3) % n], k: C.navy, w: '#fff' }, 'adesivoV')}</div>`; };
 // Cacho de ilustrações em volta de um centro (para o "palco" do cartaz)
 function cacho(il, t, R) {
   const pos = [[0, -.04, .46, -4], [-.64, -.34, .3, -12], [.64, -.34, .3, 12], [-.68, .36, .28, -8], [.68, .36, .28, 10], [0, .7, .24, 4], [0, -.74, .24, 0]];
@@ -76,22 +76,24 @@ const Hz = {
     return K.FUNDOS[f](t, W, H) + A(`left:${W * .06}px;top:${H * .5 - R * 1.04 - (bd ? 6 * u : 4 * u)}px;width:${R * 2.08}px;height:${R * 2.08}px;border-radius:50%;background:${t.a === '#FFFFFF' ? t.b || t.d : t.a};box-shadow:0 0 0 ${u * 1.2}px ${escuro(t)},0 0 0 ${u * 2.6}px #fff`) + A(`left:${W * .06 + R * .04}px;top:${H * .5 - R - (bd ? 6 * u : 4 * u)}px;width:${R * 2}px;height:${R * 2}px`, cacho(e.il, { ...t, p: t.a }, R))
       + A(`left:${W * .06 + R * 2.3}px;right:${W * .04}px;top:0;bottom:${(bd ? 12 : 18) * u}px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:${2.6 * u}px`, `${K.pill(e.sub, escuro(t), (bd ? 2.6 : 3.2) * u)}${K.titulo(['extrusao', 'faixa', 'blocos'][i % 3], e.l1, e.l2, t, (bd ? 10.5 : 15) * u, f === 'geometrico' ? (on(t.p) === '#fff' ? t.p : C.navy) : ink, 'left')}`) + rodape(W, (bd ? 12 : 18) * u, un); },
 };
-const P = (html) => K.FILT + html;
+const P = (html) => html;
+// no PDF, remove as texturas de grão (filtros viram imagem gigante na impressão)
+const semGrao = (html) => html.replace(/<svg class="abs" style="inset:0;[^"]*"[^>]*><filter[\s\S]*?<\/svg>/g, '');
 function add(e, dir, un, set) {
   const t = { p: e.p, a: e.a, d: e.d, b: e.b }, vk = Object.keys(V), hk = Object.keys(Hz), seed = e.slug.length;
-  const out = (html, w, h, nome, cm, sc = 1.25) => { jobs.push({ html: P(html), w, h, scale: sc, out: path.join(dir, nome + '.jpg'), transparent: false }); if (cm) jobs.push({ html: P(html), w, h, out: path.join(dir, nome + '.pdf'), pdf: { wcm: cm[0], hcm: cm[1] } }); };
-  if (set.cartaz) vk.forEach((l, i) => out(V[l](e, t, 1190, 1684, un, i + seed), 1190, 1684, `cartazes-A3/cartaz-${i + 1}-${l}`, [29.7, 42]));
+  const out = (html, w, h, nome, cm, sc = 1) => { sc = Math.min(sc, 1); jobs.push({ html: P(html), w, h, scale: sc, q: 84, out: path.join(dir, nome + '.jpg'), transparent: false }); if (cm) jobs.push({ html: semGrao(P(html)), w, h, out: path.join(dir, nome + '.pdf'), pdf: { wcm: cm[0], hcm: cm[1] } }); };
+  if (set.cartaz) vk.slice(0, set.cartaz).forEach((l, i) => out(V[l](e, t, 1190, 1684, un, i + seed), 1190, 1684, `cartazes-A3/cartaz-${i + 1}-${l}`, [29.7, 42]));
   if (set.panfleto) vk.slice(0, set.panfleto).forEach((l, i) => out(V[vk[(i + 1) % 4]](e, t, 1050, 1480, un, i + seed + 1), 1050, 1480, `panfletos-A5/panfleto-${i + 1}-${vk[(i + 1) % 4]}`, [14.8, 21]));
   if (set.banner) ['palco', 'moldura', 'lateral'].slice(0, set.banner).forEach((l, i) => out(V[l](e, t, 800, 2000, un, i + seed + 2), 800, 2000, `banners-rollup-80x200cm/banner-${i + 1}-${l}`, [80, 200], 1));
   if (set.faixa) hk.filter((x) => x !== 'mural').slice(0, set.faixa).forEach((l, i) => out(Hz[l](e, t, 1500, 500, un, i + seed), 1500, 500, `faixas-300x100cm/faixa-${i + 1}-${l}`, [300, 100], 1.4));
   if (set.backdrop) hk.slice(0, set.backdrop).forEach((l, i) => out(Hz[l](e, t, 1800, 1200, un, i + seed), 1800, 1200, `backdrops-300x200cm/backdrop-${i + 1}-${l}`, [300, 200], 1.2));
 }
-for (const e of EV) add(e, path.join(OUT, '08-impressos', 'eventos-e-campanhas', e.slug), null, { cartaz: 1, panfleto: 2, banner: 3, faixa: 2, backdrop: 3 });
+for (const e of EV) add(e, path.join(OUT, '08-impressos', 'eventos-e-campanhas', e.slug), null, { cartaz: 4, panfleto: 2, banner: 2, faixa: 2, backdrop: 3 });
 // Institucional por tema, unidade e serviço
 const ILC = { sede: 'livro lampada mochila medalha aviao lapis3 bandeirapilar capelo', escola: 'mochila lapis3 livro maca caderno regua globo sino', bilingue: 'hello abc mundo ola aa livro uk br', creche: 'urso blocos pipa bola sol arcoiris pato balao', cria: 'mao flor borboleta sol coracao arcoiris urso casacoracao', servico: 'livro lampada medalha coracao aviao estrelinha capelo sino' };
 const GR = require('./grafismos.js');
-for (const [cat, t] of Object.entries(k.TEMAS)) add({ slug: 'tema-' + cat, l1: cat === 'bilingue' ? 'Welcome!' : 'Seja', l2: cat === 'bilingue' ? 'Bem-vindos!' : 'bem-vindo!', sub: t.nome, il: ILC[cat].split(' '), p: t.p, a: t.a, d: t.p === C.navy ? C.azul : t.d, b: t.b }, path.join(OUT, '08-impressos', 'institucional', 'tema-' + cat), cat === 'bilingue' ? k.UNIDADES.find((x) => x.cat === 'bilingue') : null, { cartaz: 1, banner: 3, faixa: 2, backdrop: 3 });
-for (const u of k.UNIDADES) { const t = k.temaDe(u); add({ slug: u.slug, l1: 'Seja', l2: 'bem-vindo!', sub: u.tipo.split(' · ')[0], il: ILC[u.cat].split(' '), p: t.p, a: t.a, d: t.d, b: t.b }, path.join(OUT, '08-impressos', 'institucional', 'unidades', u.slug), u, { banner: 2, backdrop: 2 }); }
+for (const [cat, t] of Object.entries(k.TEMAS)) add({ slug: 'tema-' + cat, l1: cat === 'bilingue' ? 'Welcome!' : 'Seja', l2: cat === 'bilingue' ? 'Bem-vindos!' : 'bem-vindo!', sub: t.nome, il: ILC[cat].split(' '), p: t.p, a: t.a, d: t.p === C.navy ? C.azul : t.d, b: t.b }, path.join(OUT, '08-impressos', 'institucional', 'tema-' + cat), cat === 'bilingue' ? k.UNIDADES.find((x) => x.cat === 'bilingue') : null, { cartaz: 4, banner: 2, faixa: 2, backdrop: 3 });
+for (const u of k.UNIDADES) { const t = k.temaDe(u); add({ slug: u.slug, l1: 'Seja', l2: 'bem-vindo!', sub: u.tipo.split(' · ')[0], il: ILC[u.cat].split(' '), p: t.p, a: t.a, d: t.d, b: t.b }, path.join(OUT, '08-impressos', 'institucional', 'unidades', u.slug), u, { banner: 1, backdrop: 1 }); }
 const ILS = { 'busca-ativa': 'mochila casinha coracao livro lapis3 sino aviao estrelinha', comunicacao: 'aviao lampada hello ola estrelinha coracao livro sino', 'alimentacao-escolar': 'maca milho xicara copo folha regador coracao sol', 'transporte-escolar': 'trem mochila sino casinha estrelinha sol livro coracao', 'educacao-especial': 'coracao mao arcoiris borboleta estrelinha flor sol casacoracao', eja: 'livro capelo lampada pilha medalha caderno lapis3 estrelacadente', 'educacao-infantil': 'blocos urso bola pipa sol arcoiris pato balao', 'ensino-fundamental': 'livro lapis3 caderno regua mochila globo maca tesoura', 'formacao-pedagogica': 'lousa lampada pilha medalha livro maca capelo caderno', 'matricula-censo': 'caderno mochila casinha lapis3 livro sino regua aviao', 'equipe-psicossocial': 'coracao casacoracao borboleta nuvem flor sol arcoiris mao', 'educacao-bilingue': 'hello ola abc mundo aa livro uk br', 'tempo-integral': 'sol bola paleta livro maca violao trofeu foguete', 'tecnologia-educacional': 'foguete lampada tubo aviao planeta globo livro estrelacadente', cultura: 'boi guerreiro mascaras paleta violao pandeiro estandarte frevo', 'casa-da-cultura': 'sobrado azulejo cordel boi guerreiro passaro paleta solxilo', 'cine-pilarense': 'cine claquete rolo projetor pipoca mascaras estrelacadente violao', 'banda-fanfarra': 'trompete caixa estandarte pandeiro medalha frevo sino estrelacadente', biblioteca: 'livro pilha cordel lampada caderno aviao foguete estrelinha', 'esporte-escolar': 'bola trofeu medalha estrelacadente foguete sino coracao estandarte', conselhos: 'livro medalha coracao casinha lampada bandeirapilar capelo sino', infraestrutura: 'casinha regua lampada sobrado sol regador folha tesoura' };
 // Panfleto informativo (frente com os três pontos de um tema)
 function panfletoInfo(s, t, tema, i) {
@@ -101,8 +103,8 @@ function panfletoInfo(s, t, tema, i) {
     + A(`left:${3 * u}px;bottom:${15 * u}px;z-index:2`, st(il[(i + 1) % il.length], 15 * u, t, 1, -10)) + rodape(W, 13.5 * u, s);
 }
 for (const s of k.SERVICOS) { const t = s.tema, dir = path.join(OUT, '08-impressos', 'institucional', 'servicos', s.slug);
-  add({ slug: s.slug, l1: 'Estamos', l2: 'aqui por você', sub: s.nome, il: ILS[s.slug].split(' '), p: t.p, a: t.a, d: t.d, b: t.b }, dir, s, { cartaz: 1, banner: 2, backdrop: 2, faixa: 1 });
-  dados.SERV[s.slug].temas.forEach((tema, i) => { const html = P(panfletoInfo(s, t, tema, i)), nm = `panfletos-informativos-A5/panfleto-${i + 1}`; jobs.push({ html, w: 1050, h: 1480, scale: 1.25, out: path.join(dir, nm + '.jpg'), transparent: false }, { html, w: 1050, h: 1480, out: path.join(dir, nm + '.pdf'), pdf: { wcm: 14.8, hcm: 21 } }); });
+  add({ slug: s.slug, l1: 'Estamos', l2: 'aqui por você', sub: s.nome, il: ILS[s.slug].split(' '), p: t.p, a: t.a, d: t.d, b: t.b }, dir, s, { cartaz: 2, banner: 1, backdrop: 1, faixa: 1 });
+  dados.SERV[s.slug].temas.forEach((tema, i) => { const html = P(panfletoInfo(s, t, tema, i)), nm = `panfletos-informativos-A5/panfleto-${i + 1}`; jobs.push({ html, w: 1050, h: 1480, scale: 1, q: 84, out: path.join(dir, nm + '.jpg'), transparent: false }, { html: semGrao(html), w: 1050, h: 1480, out: path.join(dir, nm + '.pdf'), pdf: { wcm: 14.8, hcm: 21 } }); });
 }
 module.exports = { EV, V, Hz, rodape, info, cacho, st, selo, ILS };
 if (require.main === module) { const only = process.argv[2]; console.log(jobs.length); k.renderAll(only ? jobs.filter((j) => j.out.includes(only)) : jobs, { label: 'print2', concurrency: 3 }); }

@@ -18,6 +18,10 @@ def note(f, dur, kind='marimba', vol=1.0):
     elif kind == 'kick':
         ph = 2*np.pi*np.cumsum(50 + 110*np.exp(-t/.035))/SR
         s = np.sin(ph) * env(n, .001, .16)
+    elif kind == 'brass':
+        s = sum(np.sin(2*np.pi*f*m*t) / m for m in range(1, 7)) * np.minimum(t/.03, 1) * np.exp(-t/.5) * .5
+    elif kind == 'pluck':
+        s = (np.sin(2*np.pi*f*t) + .5*np.sin(2*np.pi*f*2*t) + .25*np.sin(2*np.pi*f*3*t)) * env(n, .002, .12)
     elif kind == 'glint':
         s = np.sin(2*np.pi*f*t) * env(n, .001, .12) * .7
     return s * vol
@@ -29,7 +33,7 @@ def swish(dur, f0, f1, vol=.5, seed=0):
         fc = 2*np.sin(np.pi*fr[i]/SR); hp = x[i] - lp - q*bp; bp += fc*hp; lp += fc*bp; out[i] = bp
     e = np.sin(np.linspace(0, np.pi, n))**2
     return out * e * vol
-def render(semis=0, playful=0.0):
+def render(semis=0, playful=0.0, var=0):
     N = SR*5; L = np.zeros(N+SR); R = np.zeros(N+SR)
     k = 2 ** (semis/12)
     def put(s, at, pan=0.0):
@@ -39,7 +43,9 @@ def render(semis=0, playful=0.0):
     for i in range(4): put(swish(.42, 500+250*i, 3200+900*i, .2, i), .02+.08*i, -0.6+.4*i)
     for i in range(4): put(swish(.4, 4000-300*i, 700, .13, 9+i), .52+.06*i, 0.6-.4*i)
     put(note(0, .5, 'kick', .9), .82)
-    for f, at, pan in [(C5, 1.02, -.3), (E5, 1.17, -.1), (G5, 1.30, .1), (C6, 1.47, .3)]: put(note(f, .9, 'marimba', .85), at, pan)
+    seqs = {0: ('marimba', [(C5, 1.02), (E5, 1.17), (G5, 1.30), (C6, 1.47)]), 1: ('pluck', [(G5, 1.0), (E5, 1.12), (C5, 1.24), (E5, 1.36), (G5, 1.48), (C6, 1.6)]), 2: ('bell', [(C5, 1.0), (G5, 1.4)]), 3: ('brass', [(C5, 1.0), (C5, 1.16), (C5, 1.32), (G5, 1.5)]), 4: ('marimba', [(C6, 1.0), (G5, 1.12), (E5, 1.24), (G5, 1.36), (C6, 1.5)]), 5: ('pluck', [(C5, 1.0), (D6/2, 1.14), (E5, 1.28), (G5, 1.42), (D6, 1.56)])}
+    kind, seq = seqs[var % 6]
+    for j, (f, at) in enumerate(seq): put(note(f, .9, kind, {'marimba': .85, 'pluck': .9, 'bell': .5, 'brass': .5}[kind]), at, -.3 + .6 * j / max(1, len(seq) - 1))
     if playful:
         for f, at in [(E6, 1.60), (G6, 1.70)]: put(note(f, .5, 'glint', .22*playful), at, .4)
     put(note(0, .5, 'kick', 1.0), 1.86); put(swish(.5, 600, 5000, .16, 33), 1.62)
@@ -61,5 +67,5 @@ def render(semis=0, playful=0.0):
     st = np.stack([L2*fade, R2*fade], 1); st = np.tanh(st * 1.15 / np.max(np.abs(st))) * .93
     return (st * 32767).astype(np.int16)
 if __name__ == '__main__':
-    out, semis, playful = sys.argv[1], int(sys.argv[2]), float(sys.argv[3])
-    with wave.open(out, 'wb') as w: w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(render(semis, playful).tobytes())
+    out, semis, playful = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]); var = int(sys.argv[4]) if len(sys.argv) > 4 else 0
+    with wave.open(out, 'wb') as w: w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(render(semis, playful, var).tobytes())

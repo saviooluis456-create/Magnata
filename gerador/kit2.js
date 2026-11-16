@@ -7,7 +7,8 @@ const A = (style, inner = '') => `<div class="abs" style="${style}">${inner}</di
 const on = G.on;
 const rnd = (s) => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const mix = (hex, pct, to = '#ffffff') => { const h = (x) => parseInt(x, 16); const a = [1, 3, 5].map((i) => h(hex.slice(i, i + 2))), b = [1, 3, 5].map((i) => h(to.slice(i, i + 2))); return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * pct).toString(16).padStart(2, '0')).join(''); };
-const il = (name, size, pal, filt = '') => `<svg viewBox="-10 -10 220 220" width="${size}" height="${size}" style="overflow:visible"><g ${filt ? `filter="url(#${filt})"` : ''}>${I[name](pal)}</g></svg>`;
+// 'adesivoV' = adesivo 100% vetorial (contorno branco + sombra dura por cópias com traço), seguro para PDF de impressão
+const il = (name, size, pal, filt = '') => { const d = I[name](pal); return filt === 'adesivoV' ? `<svg viewBox="-12 -12 226 226" width="${size}" height="${size}" style="overflow:visible"><g class="otl">${d.replace(/id="/g, 'id="o')}</g><g>${d}</g></svg>` : `<svg viewBox="-10 -10 220 220" width="${size}" height="${size}" style="overflow:visible"><g ${filt ? `filter="url(#${filt})"` : ''}>${d}</g></svg>`; };
 const forma = (name, size, color) => `<svg viewBox="0 0 200 200" width="${size}" height="${size}" style="overflow:visible">${G.FORMAS[name](color)}</svg>`;
 const pal = (t, i = 0) => { const cs = [t.a, t.b || C.ciano, '#ffffff', t.d, t.p].filter((c, j, a) => c !== t.p || j === 4); return { a: cs[i % 3], b: cs[(i + 1) % 3], c: cs[(i + 2) % 3], k: t.d === t.p ? C.navy : t.d, w: '#fff' }; };
 

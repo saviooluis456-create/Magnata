@@ -48,7 +48,7 @@ html,body{background:transparent}
 body{font-family:'Poppins',sans-serif;font-weight:600;color:${C.tinta};position:relative;overflow:hidden;-webkit-font-smoothing:antialiased}
 .an{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;line-height:.98;letter-spacing:.01em}
 .ba{font-family:'Baloo 2',sans-serif;font-weight:800;line-height:1}.li{font-family:'Lilita One',sans-serif;line-height:1}.sl{font-family:'Alfa Slab One',serif;line-height:1.02}.cv{font-family:'Caveat Brush',cursive;line-height:1}.pf{font-family:'Playfair Display',serif;line-height:1.02}.gv{font-family:'Great Vibes',cursive;line-height:1}.dm{font-family:'DM Serif Display',serif;line-height:1.02}
-.hid{display:none!important}.abs{position:absolute}.fill{position:absolute;inset:0}
+.hid{display:none!important}.sdw *{fill:#1B1F5E!important;stroke:#1B1F5E!important;stroke-width:13px!important;stroke-linejoin:round}.otl *{fill:#fff!important;stroke:#fff!important;stroke-width:13px!important;stroke-linejoin:round}.abs{position:absolute}.fill{position:absolute;inset:0}
 svg{display:block}`;
 
 // ---------- Ícones (Phosphor, MIT) ----------

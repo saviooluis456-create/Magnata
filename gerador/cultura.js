@@ -83,7 +83,8 @@ const PATR = [
 ];
 const EVT = [['Em cartaz', 'Exposição', 'paleta sobrado azulejo'], ['Programação', 'Agenda cultural', 'solxilo cordel estandarte'], ['Participe', 'Oficina', 'paleta violao cordel'], ['Inscrições abertas', 'Edital', 'cordel solxilo passaro'], ['Para escolas', 'Visita guiada', 'sobrado azulejo passaro'], ['Você é nosso convidado', 'Vernissage', 'paleta mascaras solxilo'], ['Poesia e música', 'Sarau', 'violao cordel passaro'], ['Bate-papo', 'Roda de conversa', 'pandeiro cordel solxilo'], ['Para as crianças', 'Contação de história', 'cordel passaro solxilo'], ['Audiovisual', 'Mostra de cinema', 'claquete rolo projetor'], ['Literatura', 'Lançamento de livro', 'cordel paleta passaro'], ['Feito à mão', 'Feira de artesanato', 'azulejo bagre canoa'], ['Hoje tem', 'Noite cultural', 'violao pandeiro frevo'], ['Tradição', 'Cortejo de folguedos', 'boi guerreiro estandarte'], ['Música', 'Apresentação da fanfarra', 'trompete caixa estandarte'], ['Teatro', 'Espetáculo', 'mascaras estandarte solxilo']];
 const jobs = [], pk = Object.keys(PAL);
-const J = (html, w, h, out, o = {}) => jobs.push({ html, w, h, out: path.join(BASE, out), transparent: false, ...o });
+const RAST = []; // as texturas de xilogravura são filtros: o PDF vetorial ficaria gigantesco, então o PDF de impressão embute um JPG em alta
+const J = (html, w, h, out, o = {}) => { if (o.pdf) { const dpi = o.pdf.wcm <= 45 ? 170 : 55, sc = Math.max(1, Math.min(4, ((o.pdf.wcm / 2.54) * dpi) / w)), jpg = path.join(BASE, out.replace(/\.pdf$/, '.impressao.jpg')); RAST.push([jpg, o.pdf.wcm, o.pdf.hcm]); return jobs.push({ html, w, h, out: jpg, transparent: false, scale: sc, q: 92 }); } jobs.push({ html, w, h, out: path.join(BASE, out), transparent: false, ...o }); };
 const centro = (inner, bg) => DEFS + `<div class="fill" style="background:${bg};display:flex;align-items:center;justify-content:center">${inner}</div>`;
 // 01 logos
 pk.forEach((p) => { J(centro(logo(420, PAL[p]), PAL[p].bg), 1600, 700, `01-logo/logo-horizontal-${p}.png`, { scale: 2 }); J(centro(logo(560, PAL[p], 'v'), PAL[p].bg), 1200, 1300, `01-logo/logo-vertical-${p}.png`, { scale: 2 }); });
@@ -122,4 +123,10 @@ const leg = DEFS + `<div class="fill" style="background:#FFF6E3"></div>` + A('le
 J(leg, 1000, 600, '08-impressos/legenda-de-obra/legenda-de-obra.png'); J(leg, 1000, 600, '08-impressos/legenda-de-obra/legenda-de-obra-15x9cm.pdf', { pdf: { wcm: 15, hcm: 9 } });
 PATR.slice(0, 8).forEach(([kicker, l1, l2, texto, il], i) => { const P = PAL[pk[(i + 1) % 5]], d = { kicker, l1, l2, texto, il: il.split(' ') }; J(arte(1050, 1480, P, d, i), 1050, 1480, `08-impressos/panfletos-A5/panfleto-${String(i + 1).padStart(2, '0')}-${slug(l1 + ' ' + l2)}.jpg`, { scale: 1.5 }); J(arte(1050, 1480, P, d, i), 1050, 1480, `08-impressos/panfletos-A5/panfleto-${String(i + 1).padStart(2, '0')}-${slug(l1 + ' ' + l2)}.pdf`, { pdf: { wcm: 14.8, hcm: 21 } }); });
 module.exports = { PAL, DEFS, logo, emblema, assina, panorama, xil, arte, papel };
-if (require.main === module) { const only = process.argv[2]; console.log(jobs.length); k.renderAll(only ? jobs.filter((j) => j.out.includes(only)) : jobs, { label: 'cultura', concurrency: 3 }); }
+if (require.main === module) { const only = process.argv[2]; console.log(jobs.length); k.renderAll(only ? jobs.filter((j) => j.out.includes(only)) : jobs, { label: 'cultura', concurrency: 3 }).then(() => { const lista = RAST.filter(([f]) => fs.existsSync(f)); if (!lista.length) return; require('child_process').execFileSync('python3', ['-c', `
+import sys,os,json
+from PIL import Image
+Image.MAX_IMAGE_PIXELS=None
+for f,wcm,hcm in json.loads(sys.argv[1]):
+    im=Image.open(f).convert('RGB'); im.save(f.replace('.impressao.jpg','.pdf'),'PDF',resolution=im.width/(wcm/2.54),quality=90); os.remove(f)
+print('PDFs de impressão:',len(json.loads(sys.argv[1])))`, JSON.stringify(lista)], { stdio: 'inherit' }); }); }
