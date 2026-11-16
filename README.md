@@ -1,55 +1,72 @@
 # Identidade Visual — SEMEC Pilar
 
-Sistema de identidade visual da **Secretaria Municipal de Educação e Cultura de Pilar – AL** (sede, escolas, creches, serviços, campanhas e eventos), construído a partir do estilo das peças de referência da Prefeitura de Pilar e da SEPREV: tipografia condensada pesada, faixas inclinadas, estouros, cores chapadas da bandeira do município e o azul institucional.
+Sistema de identidade visual da **Secretaria Municipal de Educação e Cultura de Pilar – AL**: marcas, redes sociais, grafismos, impressos, vinhetas e as identidades próprias da Casa da Cultura e da Secretária.
 
-- **Entregáveis prontos:** pasta [`identidade-semec/`](identidade-semec)
-- **Comece por aqui:** [`identidade-semec/00-manual/manual-da-marca-semec.pdf`](identidade-semec/00-manual/manual-da-marca-semec.pdf)
-- **Código-fonte que gera tudo:** pasta [`gerador/`](gerador)
+- **Arquivos prontos:** pasta [`identidade-semec/`](identidade-semec)
+- **Apresentação em slides:** https://claude.ai/artifact/TzwQn9Rw26pikYtbGeA1iz (privada; compartilhe pelo menu Share)
+- **Manual da marca:** [`identidade-semec/00-manual/manual-da-marca-semec.pdf`](identidade-semec/00-manual/manual-da-marca-semec.pdf)
+- **Código que gera tudo:** pasta [`gerador/`](gerador)
 
-## O que tem em cada pasta
+## Mapa das pastas
 
-| Pasta | Conteúdo |
+| Pasta | O que tem |
 |---|---|
-| `00-manual` | Manual da marca (PDF, 11 páginas) e as páginas em PNG |
-| `01-logos` | Logo SEMEC (horizontal/vertical; cor, negativo, mono; PNG + PDF vetorial; símbolo em SVG) e, para **cada escola, creche e serviço**: logo cor, logo negativo, PDF vetorial, selo e **foto de perfil** 1080×1080 |
-| `02-stories` | **40 presets** de stories 1080×1920 **sem fundo e sem texto** para cada tema (sede, escolas, Escola Bilíngue, creches, Creches CRIA, serviços) + kit de 9 presets com a marca de cada unidade e de cada serviço. Inclui 4 legendas pequenas (`18` a `21`) para descrever o que acontece no vídeo |
-| `03-destaques` | 38 capas de destaques do Instagram em 3 estilos (colorido, azul-marinho, claro) |
-| `04-lower-thirds` | 12 lower thirds **sem fundo e sem texto** por tema, em horizontal (1920×1080) e vertical (1080×1920) + 3 por unidade/serviço |
-| `05-uniformes` | Mockups frente/costas: fardamento do aluno e de educação física (por escola/creche), polo da equipe, camiseta de ação e colete (serviços e sede) |
-| `06-crachas` | Crachá frente e verso (PNG + PDF 54×86 mm para impressão), arte do **cordão** de 20 mm e mockup — sede, cada unidade, cada serviço e por função |
-| `07-vinhetas` | Vinhetas de **5 s** em formato Reels (1080×1920, 30 fps, H.264 + áudio AAC) — SEMEC, temas, cada unidade e cada serviço |
-| `08-impressos` | 33 eventos/campanhas (Jornada Pedagógica, Busca Ativa, Matrículas, São João, Natal, Festa da Padroeira, aniversário de Pilar…) com cartaz A3, banner roll-up 80×200, faixa 3×1 m, backdrop 3×2 m, placa de foto, post, story e título transparente; kits institucionais por tema e por unidade; calendários 2027 |
+| `00-manual` | Manual da marca (PDF) |
+| `01-logos` | Logo SEMEC e, para cada escola, creche e serviço: logo, selo e foto de perfil |
+| `02-stories` | **80 presets** de stories sem fundo e sem texto por tema (sede, escolas, Bilíngue, creches, CRIA, serviços) + kit de 15 com a marca de cada unidade e serviço. Inclui molduras para 2, 3 e 4 fotos, saiu na mídia, convite, aniversariante, placar, antes e depois, legendas pequenas |
+| `03-destaques` | 38 capas de destaques em 3 estilos |
+| `04-lower-thirds` | Lower thirds sem fundo, horizontal e vertical |
+| `05-uniformes` · `06-crachas` | Mockups de fardamento e polo; crachá frente, verso, PDF de impressão e cordão |
+| `07-vinhetas` | Vinhetas de 5 s (1080×1920, com som) em **seis estilos**: livro, cortina, adesivos, círculo, faixas e linha |
+| `08-impressos` | **Refeitos.** Por evento/campanha (36): 4 cartazes A3, 2 panfletos A5, 2 banners roll-up, 2 faixas e 3 backdrops de arte inteira, em JPG + PDF vetorial. Institucional por tema, unidade e serviço, com panfletos informativos por serviço. Calendários 2027 |
+| `09-grafismos` | **51 pacotes** de elementos em PNG transparente (5 frentes, 22 serviços, 24 datas), mais de mil por frente e por serviço: ilustrações, ícones, formas e palavras-adesivo |
+| `10-feed` | Presets de feed sem fundo (1080×1350) e posts prontos por frente e serviço |
+| `11-fundos` | 10 estilos de fundo por tema, para story e feed |
+| `12-carrosseis-prontos` · `13-stories-prontos` | 86 temas informativos escritos, em carrossel e em sequência de stories |
+| `14-datas-comemorativas` | 24 datas, cada uma com **foto de perfil sazonal da Secretaria**, 12 destaques, 10 títulos sem fundo, posts, stories, fundos, presets e vinheta |
+| `15-casa-da-cultura` | Identidade própria em estilo xilogravura: logo, ilustrações da cultura de Pilar, panoramas, padrões, série Patrimônios, programação, redes sociais, sinalização, postais, marcadores, banners e backdrops |
+| `16-secretaria-elizaneide-costa` | Identidade pessoal da Secretária (roxo, rosa e branco): 3 opções de logo, perfil, destaques, presets, fundos, artes com título, lower thirds, papelaria e vinhetas |
+| `17-sala-da-comunicacao` | 18 formulários de planejamento em 3 cores, kanban, placas de porta, títulos de mural, lombadas, etiquetas, capas e cartazes de parede |
+| `18-presets-animados-sem-fundo` | 10 animações de 3 s por tema, em WebM com transparência e em MP4 com fundo verde (chroma key) |
 
-Os PDFs de impressão são **vetoriais e em tamanho real**; os textos de data, horário e local são marcadores para editar no Illustrator/Corel/Canva.
+## Sobre os números de grafismos
 
-## Pesquisa da rede (novembro/2026)
+Cada pacote parte de desenhos-base (115 ilustrações desenhadas para este projeto, ícones Phosphor e cerca de 90 formas) e os entrega em várias cores e acabamentos. Por isso um pacote passa de mil arquivos sem ter mil desenhos diferentes.
 
-Unidades municipais listadas no Censo Escolar (via escol.as):
+## Sobre resolução
 
-- **Escolas (17):** Anísio de Souza · Antônio Eustáquio de Melo · Dep. Oséas Cardoso · Dr. Manoel Ramos · Emb. Renato de Mendonça · Min. Jarbas Passarinho · Nossa Senhora do Pilar · Pres. Emílio G. Médici · Prof. Arthur Ramos · Prof. Jorge Barros · Profª Jacy da Costa Ayres · Profª Lourinete Barbosa · Profª Sueli Cristina Santos Chagas · Ver. José Washington Melo Maia · Maria Gorete da Silva · Elisabeth Macena dos Santos · Profª Iraci Ferreira dos Santos
-- **Escola Bilíngue:** Centro Integral de Ensino Fundamental Bilíngue de Pilar Profª Maria Euda de Melo Omena
-- **Creches e CMEIs (6):** CEI Rubens Cavalcante de Barros · CMEI Profª Rosilene Mota de Lima · CMEI Afonso Cavalcante da Silva · Creche Enoch Cavalcanti de Barros · Creche Padre Eduardo Tadeu Lopes da Silva · Creche Tia Mariinha
+Logos, títulos e presets principais saem em 1,5× a 2× (até 2160 px de largura). PDFs de impressão são vetoriais em tamanho real; os da Casa da Cultura embutem imagem em alta, porque a textura de xilogravura não é vetorial. Artes com fundo saem entre 1080 e 1620 px de largura. Para regerar qualquer peça maior, aumente `scale` no script correspondente.
 
-Fontes: [escol.as – Pilar/AL](https://www.escol.as/cidades/1724-pilar/dependencia/municipal) · [Prefeitura de Pilar](https://pilar.al.gov.br/) · [TNH1 – Escola Bilíngue](https://www.tnh1.com.br/noticia/nid/escola-bilingue-de-pilar-recebe-reconhecimento-nacional-do-mec-por-inovacao-no-ensino-integral/) · [Jovem Pan – ensino bilíngue](https://jovempan.com.br/educacao/cidade-de-pilar-al-vira-referencia-nacional-em-ensino-bilingue-na-rede-publica/) · [Tribuna do Sertão – Creches CRIA em Pilar](https://www.tribunadosertao.com.br/cidades/2022/02/16/422200-governo-de-alagoas-investe-cerca-de-r-50-milhoes-em-pilar) · [TNH1 – Festival de Cinema / Cine Pilarense](https://www.tnh1.com.br/noticia/nid/2-festival-de-cinema-de-pilar-celebra-o-audiovisual-alagoano-com-o-tema-conexoes/) · [TNH1 – Pilar do Preto](https://www.tnh1.com.br/noticia/nid/campanha-pilar-do-preto-celebra-semana-da-consciencia-negra/)
+## Pesquisa
 
-### Pontos a confirmar com a Secretaria
+- **Rede (Censo Escolar):** 17 escolas, a Escola Bilíngue e 6 creches/CMEIs — lista completa em `gerador/core.js`.
+- **Cultura de Pilar:** Boi do Canário (Mestre Canarinho, Dia de Reis), bloco Os Caçadores, Banda Fanfarra, Peixe Bagre, Cine Pilarense (1924), Museu Arthur Ramos, Mestra Bida, lagoa Manguaba, festivais Mestre Canarinho, de Cinema e de Artes e Saberes das Águas.
+- **Secretária:** a imprensa local grafa "Elizaneide Costa".
 
-1. **Sigla:** usei **SEMEC**, que é a forma dos editais oficiais. Para trocar, altere `SIGLA` em `gerador/core.js` e gere de novo.
-2. **Creches CRIA:** não encontrei os nomes oficiais das unidades de Pilar; criei a identidade do tema e duas unidades-modelo ("Unidade I" e "Unidade II"). Basta trocar os nomes em `UNIDADES`.
-3. **Serviços e coordenações:** a lista (Busca Ativa, Comunicação, Alimentação Escolar, Transporte, Educação Especial, EJA, etc.) foi montada a partir das peças de referência e da estrutura usual de uma secretaria — ajuste nomes, inclua ou remova em `SERVICOS`.
-4. **Elisabeth Macena** e **Iraci Ferreira** aparecem no Censo só com o nome; tratei como "Escola Municipal".
-5. **Datas** dos eventos ficaram como marcadores; o calendário 2027 traz feriados nacionais e estaduais (feriados municipais não incluídos).
-6. **Logo da Prefeitura:** os rodapés reservam o espaço "Prefeitura de Pilar" em texto; aplique o logo oficial por cima.
+Fontes: [escol.as](https://www.escol.as/cidades/1724-pilar/dependencia/municipal) · [Prefeitura de Pilar](https://pilar.al.gov.br/) · [Portal AL7 – nova secretária](https://portalal7.com.br/pilar-prefeita-fatima-rezende-anuncia-professora-elizaneide-costa-como-nova-secretaria-de-educacao/) · [AMA – Patrimônio Vivo](https://ama-al.com.br/pela-primeira-vez-em-alagoas-pilar-diploma-grupos-folcloricos-como-patrimonio-vivo/) · [Mapa da Cultura – Boi do Canário](https://mapa.cultura.gov.br/agente/14395152/) · [Tribuna do Sertão – Festival de Artes e Saberes das Águas](https://www.tribunadosertao.com.br/cidades/2026/11/13/1021037-festival-de-artes-e-saberes-das-aguas-valoriza-tradicoes-culturais-e-identidade-de-pilar) · [TNH1 – Cine Pilarense](https://www.tnh1.com.br/noticia/nid/primeiro-festival-de-cinema-de-pilar-sera-realizado-em-homenagem-aos-cem-anos-do-cine-pilarense/) · [TNH1 – Escola Bilíngue](https://www.tnh1.com.br/noticia/nid/escola-bilingue-de-pilar-recebe-reconhecimento-nacional-do-mec-por-inovacao-no-ensino-integral/)
+
+## Pontos a confirmar
+
+1. **Sigla** SEMEC (`SIGLA` em `gerador/core.js`) e **grafia do nome da Secretária** (`NOME` em `gerador/secretaria.js`).
+2. **Creches CRIA:** nomes oficiais não encontrados; há duas unidades-modelo.
+3. **Serviços e coordenações:** lista de 22 montada por dedução.
+4. **Textos informativos:** são gerais (legislação e programas nacionais). Datas, telefones e endereços ficam como marcadores. O termo de uso de imagem é um modelo e deve passar pela Procuradoria.
+5. **Ilustrações de prédios** (Cine, igreja, Casa da Cultura) são estilizadas, não retratos fiéis.
+6. **Som das vinhetas:** sintetizado pelo `audio.py` e não ouvido durante a produção.
+7. **Marca da Secretária:** é para canais pessoais. A publicidade oficial não pode trazer nomes ou símbolos de promoção pessoal (Constituição, art. 37, §1º).
+8. **Logo da Prefeitura:** os rodapés trazem "Prefeitura de Pilar" em texto.
 
 ## Como gerar de novo
 
 ```bash
-cd gerador
-npm install
-node logos.js && node stories.js && node social.js && node mockups.js
-node print.js && node calendario.js && node vinheta.js && node manual.js
+cd gerador && npm install
+node logos.js && node stories.js && node social.js && node social2.js
+node grafismos.js && node conteudo.js && node datas.js
+node print2.js && node calendario.js && node cultura.js
+node secretaria.js && node comunicacao.js
+node vinheta.js && node vinheta2.js && node manual.js
 ```
 
-Requer Node 22, Playwright com Chromium, Python 3 (numpy, Pillow) e ffmpeg. Cada script aceita um filtro, por exemplo `node print.js sao-joao` ou `node stories.js tema-creche`.
+Requer Node 22, Playwright com Chromium, Python 3 (numpy, Pillow) e ffmpeg. Cada script aceita um filtro (`node print2.js sao-joao`). `PULAR=1` pula o que já existe; `CONC=2` limita o paralelismo.
 
-Fontes: Anton, Poppins e Baloo 2 (Google Fonts, licença OFL). Ícones: Phosphor Icons (MIT). O áudio das vinhetas é sintetizado pelo próprio `audio.py`, sem trilhas de terceiros.
+Fontes tipográficas: Anton, Poppins, Baloo 2, Lilita One, Alfa Slab One, Caveat Brush, Playfair Display, DM Serif Display e Great Vibes (Google Fonts, licença OFL). Ícones: Phosphor (MIT).
