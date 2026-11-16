@@ -220,6 +220,7 @@ function doc(body, w, h, css = '') {
   return `<!doctype html><html><head><meta charset="utf-8"><style>${BASE_CSS()}body{width:${w}px;height:${h}px}${css}</style></head><body>${body}</body></html>`;
 }
 async function renderAll(jobs, { concurrency = 6, label = '' } = {}) {
+  if (process.env.CONC) concurrency = +process.env.CONC;
   if (process.env.PULAR) jobs = jobs.filter((j) => !fs.existsSync(j.out));
   let browser = await chromium.launch(), relaunch = null;
   const vivo = async () => { if (browser.isConnected()) return; if (!relaunch) relaunch = chromium.launch().then((b) => { browser = b; relaunch = null; }); await relaunch; };
