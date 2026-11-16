@@ -37,6 +37,8 @@ function fontCss() {
     css += face('Anton', 400, 'anton', `anton-${s}-400-normal.woff2`);
     for (const w of [500, 600, 700, 800, 900]) css += face('Poppins', w, 'poppins', `poppins-${s}-${w}-normal.woff2`);
     for (const w of [700, 800]) css += face('Baloo 2', w, 'baloo-2', `baloo-2-${s}-${w}-normal.woff2`);
+    css += face('Lilita One', 400, 'lilita-one', `lilita-one-${s}-400-normal.woff2`) + face('Alfa Slab One', 400, 'alfa-slab-one', `alfa-slab-one-${s}-400-normal.woff2`) + face('Caveat Brush', 400, 'caveat-brush', `caveat-brush-${s}-400-normal.woff2`) + face('Great Vibes', 400, 'great-vibes', `great-vibes-${s}-400-normal.woff2`) + face('DM Serif Display', 400, 'dm-serif-display', `dm-serif-display-${s}-400-normal.woff2`);
+    css += face('Playfair Display', 900, 'playfair-display', `playfair-display-${s}-900-normal.woff2`) + face('Playfair Display', 700, 'playfair-display', `playfair-display-${s}-700-normal.woff2`) + `@font-face{font-family:'Playfair Display';font-weight:800;font-style:italic;src:url(data:font/woff2;base64,${ff('playfair-display', `playfair-display-${s}-800-italic.woff2`)}) format('woff2');}`;
   }
   return (_fontCss = css);
 }
@@ -45,7 +47,7 @@ const BASE_CSS = () => `${fontCss()}
 html,body{background:transparent}
 body{font-family:'Poppins',sans-serif;font-weight:600;color:${C.tinta};position:relative;overflow:hidden;-webkit-font-smoothing:antialiased}
 .an{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;line-height:.98;letter-spacing:.01em}
-.ba{font-family:'Baloo 2',sans-serif;font-weight:800;line-height:1}
+.ba{font-family:'Baloo 2',sans-serif;font-weight:800;line-height:1}.li{font-family:'Lilita One',sans-serif;line-height:1}.sl{font-family:'Alfa Slab One',serif;line-height:1.02}.cv{font-family:'Caveat Brush',cursive;line-height:1}.pf{font-family:'Playfair Display',serif;line-height:1.02}.gv{font-family:'Great Vibes',cursive;line-height:1}.dm{font-family:'DM Serif Display',serif;line-height:1.02}
 .hid{display:none!important}.abs{position:absolute}.fill{position:absolute;inset:0}
 svg{display:block}`;
 
@@ -218,19 +220,18 @@ function doc(body, w, h, css = '') {
   return `<!doctype html><html><head><meta charset="utf-8"><style>${BASE_CSS()}body{width:${w}px;height:${h}px}${css}</style></head><body>${body}</body></html>`;
 }
 async function renderAll(jobs, { concurrency = 6, label = '' } = {}) {
-  const browser = await chromium.launch();
-  let i = 0, done = 0;
-  const worker = async () => {
-    const ctxs = {};
-    while (i < jobs.length) {
-      const j = jobs[i++];
-      const sc = j.scale || 1;
-      const ctx = ctxs[sc] || (ctxs[sc] = await browser.newContext({ deviceScaleFactor: sc }));
-      const page = await ctx.newPage();
+  if (process.env.PULAR) jobs = jobs.filter((j) => !fs.existsSync(j.out));
+  let browser = await chromium.launch(), relaunch = null;
+  const vivo = async () => { if (browser.isConnected()) return; if (!relaunch) relaunch = chromium.launch().then((b) => { browser = b; relaunch = null; }); await relaunch; };
+  let i = 0, done = 0, falhas = 0;
+  const um = async (j, ctxs) => {
+    const sc = j.scale || 1;
+    const ctx = ctxs[sc] || (ctxs[sc] = await browser.newContext({ deviceScaleFactor: sc }));
+    const page = await ctx.newPage();
+    try {
       await page.setViewportSize({ width: Math.round(j.w), height: Math.round(j.h) });
       fs.mkdirSync(path.dirname(j.out), { recursive: true });
       if (j.pdf) {
-        // PDF vetorial em tamanho real (cm): amplia o layout por zoom.
         const k = (j.pdf.wcm * 37.795) / j.w, n = j.pdf.n || 1;
         await page.setContent(doc(`<div style="width:${j.w}px;height:${j.h * n}px;position:relative;overflow:hidden;zoom:${k}">${j.html}</div>`, j.w * k, j.h * k * n, (j.css || '') + '@page{margin:0}body{overflow:visible}'), { waitUntil: 'load' });
         await page.evaluate(() => document.fonts.ready);
@@ -238,16 +239,28 @@ async function renderAll(jobs, { concurrency = 6, label = '' } = {}) {
       } else {
         await page.setContent(doc(j.html, j.w, j.h, j.css || ''), { waitUntil: 'load' });
         await page.evaluate(() => document.fonts.ready);
-        await page.screenshot({ path: j.out, omitBackground: j.transparent !== false, type: j.out.endsWith('.jpg') ? 'jpeg' : 'png', ...(j.out.endsWith('.jpg') ? { quality: 90 } : {}) });
+        await page.screenshot({ path: j.out, omitBackground: j.transparent !== false, type: j.out.endsWith('.jpg') ? 'jpeg' : 'png', ...(j.out.endsWith('.jpg') ? { quality: j.q || 88 } : {}) });
       }
-      await page.close();
+    } finally { await page.close().catch(() => {}); }
+  };
+  const worker = async () => {
+    let ctxs = {};
+    while (i < jobs.length) {
+      const j = jobs[i++];
+      for (let t = 0; t < 4; t++) {
+        try { await um(j, ctxs); break; } catch (e) {
+          for (const c of Object.values(ctxs)) await c.close().catch(() => {});
+          ctxs = {}; await vivo();
+          if (t === 3) { falhas++; console.log('FALHOU', j.out, String(e.message).slice(0, 80)); }
+        }
+      }
       if (++done % 50 === 0) console.log(`${label} ${done}/${jobs.length}`);
     }
-    for (const c of Object.values(ctxs)) await c.close();
+    for (const c of Object.values(ctxs)) await c.close().catch(() => {});
   };
   await Promise.all(Array.from({ length: concurrency }, worker));
-  await browser.close();
-  console.log(`${label} ok: ${jobs.length} arquivos`);
+  await browser.close().catch(() => {});
+  console.log(`${label} ok: ${jobs.length - falhas} arquivos${falhas ? ` (${falhas} falhas)` : ''}`);
 }
 
 module.exports = { assinatura, SIGLA, ORGAO, OUT, C, TEMAS, UNIDADES, SERVICOS, ICONE_CAT, temaDe, icon, symbol, symbolInner, stripe, logoSemec, logoUnidade, selo, burst, sparkle, zig, dots, pencil, pattern, faixa, doc, renderAll, BASE_CSS, fontCss };
