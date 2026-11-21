@@ -1,0 +1,15 @@
+{
+  "name": "Magnata Studio",
+  "short_name": "Magnata",
+  "description": "Editor de vídeo profissional para celular",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08080c",
+  "theme_color": "#08080c",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ],
+  "share_target": { "action": "./", "method": "GET", "params": { "title": "title" } }
+}
