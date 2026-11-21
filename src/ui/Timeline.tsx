@@ -166,7 +166,7 @@ const Ruler = memo(function Ruler({ dur, zoom, offset, markers }: { dur: number;
 });
 
 function CaptionRow({ project, zoom, offset }: { project: Project; zoom: number; offset: number }) {
-  const pages = buildPages(project.captions.words, Math.max(1, project.captions.style.wordsPerPage));
+  const pages = buildPages(project.captions.words, Math.max(1, project.captions.style.wordsPerPage), project.captions.style.pauseSplit);
   return (
     <div className="tl-row small" style={{ marginLeft: offset, height: 26 }} onClick={() => useEditor.setState({ panel: 'captions', selectedId: null })}>
       {pages.map((p, i) => (

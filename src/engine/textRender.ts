@@ -134,8 +134,8 @@ export function clearTextCache() { textCache.clear(); pagesCache.clear(); }
 export interface CaptionPage { words: CaptionWord[]; start: number; end: number }
 const pagesCache = new Map<string, CaptionPage[]>();
 
-export function buildPages(words: CaptionWord[], perPage: number): CaptionPage[] {
-  const key = perPage + '|' + words.length + '|' + words.map((w) => w.id + w.start.toFixed(2) + w.end.toFixed(2) + w.text).join(',');
+export function buildPages(words: CaptionWord[], perPage: number, pauseSplit = 0.7): CaptionPage[] {
+  const key = perPage + '|' + pauseSplit + '|' + words.length + '|' + words.map((w) => w.id + w.start.toFixed(2) + w.end.toFixed(2) + w.text).join(',');
   const hit = pagesCache.get(key);
   if (hit) return hit;
   const sorted = [...words].filter((w) => w.text.trim()).sort((a, b) => a.start - b.start);
@@ -145,12 +145,11 @@ export function buildPages(words: CaptionWord[], perPage: number): CaptionPage[]
   for (let i = 0; i < sorted.length; i++) {
     const w = sorted[i];
     const prev = cur[cur.length - 1];
-    if (prev && (w.start - prev.end > 0.7 || cur.length >= perPage)) flush();
+    if (prev && (w.start - prev.end > pauseSplit || cur.length >= perPage)) flush();
     cur.push(w);
     if (/[.!?…]$/.test(w.text) && cur.length >= Math.min(2, perPage)) flush();
   }
   flush();
-  // extend page end until next page start (max linger 0.6s)
   for (let i = 0; i < pages.length; i++) {
     const next = pages[i + 1];
     pages[i].end = next ? Math.min(next.start, pages[i].end + 0.6) : pages[i].end + 0.6;
@@ -175,7 +174,28 @@ export function pageAt(pages: CaptionPage[], t: number): CaptionPage | null {
 function cleanWord(w: string, st: CaptionStyle) {
   let s = st.removePunctuation ? w.replace(/[.,;:!?…"“”]/g, '') : w;
   if (st.uppercase) s = s.toUpperCase();
+  else if (st.lowercase) s = s.toLowerCase();
   return s;
+}
+
+interface Item { w: CaptionWord; text: string; width: number; emph: boolean; font: string; scale: number }
+
+/** Words that get the emphasis treatment (font/weight/size/color) */
+function emphasisSet(page: CaptionPage, st: CaptionStyle): Set<string> {
+  const set = new Set<string>();
+  for (const w of page.words) if (w.highlight || (st.keywordColors && emphasisOf(w.text) > 0)) set.add(w.id);
+  if (st.emphAuto && set.size === 0 && page.words.length > 1) {
+    // most "important" word: longest content word
+    const best = [...page.words].sort((a, b) => cleanWord(b.text, st).length - cleanWord(a.text, st).length)[0];
+    if (best) set.add(best.id);
+  }
+  return set;
+}
+
+function wordFont(st: CaptionStyle, size: number, emph: boolean) {
+  if (!emph) return { font: fontString(st.font, st.weight, size, st.italic), scale: 1 };
+  const s = st.emphScale || 1;
+  return { font: fontString(st.emphFont ?? st.font, st.emphFont || st.emphWeight !== st.weight ? st.emphWeight : st.weight, size * s, st.emphFont ? st.emphItalic : st.emphItalic || st.italic), scale: s };
 }
 
 /**
@@ -183,14 +203,15 @@ function cleanWord(w: string, st: CaptionStyle) {
  */
 export function drawCaptions(ctx: Ctx, W: number, H: number, words: CaptionWord[], st: CaptionStyle, t: number, scale: number) {
   if (!words.length) return;
-  const pages = buildPages(words, Math.max(1, st.wordsPerPage));
+  const pages = buildPages(words, Math.max(1, st.wordsPerPage), st.pauseSplit ?? 0.7);
   const page = pageAt(pages, t);
   if (!page) return;
   ensureFont(st.font, st.weight, st.italic);
+  if (st.emphFont) ensureFont(st.emphFont, st.emphWeight, st.emphItalic);
   const size = st.size * scale;
-  const font = fontString(st.font, st.weight, size, st.italic);
+  const baseFont = fontString(st.font, st.weight, size, st.italic);
   ctx.save();
-  ctx.font = font;
+  ctx.font = baseFont;
   setSpacing(ctx, st.letterSpacing * scale);
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
@@ -198,14 +219,22 @@ export function drawCaptions(ctx: Ctx, W: number, H: number, words: CaptionWord[
   ctx.textAlign = 'left';
 
   const space = ctx.measureText(' ').width;
-  const items = page.words.map((w) => {
+  const emph = emphasisSet(page, st);
+  // active word index
+  let activeIdx = -1;
+  for (let i = 0; i < page.words.length; i++) if (t >= page.words[i].start) activeIdx = i;
+  const items: Item[] = page.words.map((w, i) => {
     const text = cleanWord(w.text, st) || w.text;
-    return { w, text, width: ctx.measureText(text).width };
+    const isEmph = emph.has(w.id) || (st.highlight === 'font' && i === activeIdx);
+    const f = wordFont(st, size, isEmph && (!!st.emphFont || st.emphWeight !== st.weight || (st.emphScale ?? 1) !== 1 || st.emphItalic));
+    ctx.font = f.font;
+    return { w, text, width: ctx.measureText(text).width, emph: isEmph, font: f.font, scale: f.scale };
   });
+  ctx.font = baseFont;
   // wrap lines
   const maxLineW = Math.min(W * 0.9, ctx.measureText('M').width * 0.62 * st.maxCharsPerLine + space * 2);
-  const lines: (typeof items)[] = [];
-  let line: typeof items = [];
+  const lines: Item[][] = [];
+  let line: Item[] = [];
   let lw = 0;
   for (const it of items) {
     const add = (line.length ? space : 0) + it.width;
@@ -215,8 +244,13 @@ export function drawCaptions(ctx: Ctx, W: number, H: number, words: CaptionWord[
   }
   if (line.length) lines.push(line);
 
-  const lh = size * st.lineHeight;
-  const blockH = lh * lines.length;
+  const lineWidths = lines.map((l) => l.reduce((a, it, i) => a + it.width + (i ? space : 0), 0));
+  // per-line scale (fitLines = all lines same width; otherwise 1) and per-line height
+  const fitTarget = Math.min(W * 0.86, Math.max(...lineWidths));
+  const lineScale = lines.map((_, i) => (st.fitLines ? Math.max(0.5, Math.min(2.6, fitTarget / Math.max(1, lineWidths[i]))) : 1));
+  const lineH = lines.map((l, i) => size * st.lineHeight * Math.max(...l.map((it) => it.scale)) * lineScale[i] * (st.fitLines ? 0.92 : 1));
+  const blockH = lineH.reduce((a, b) => a + b, 0);
+  const blockW = Math.max(...lineWidths.map((w, i) => w * lineScale[i]));
   const cx = st.x * W;
   const cy = st.y * H;
   const spd = Math.max(0.2, st.animSpeed);
@@ -224,23 +258,17 @@ export function drawCaptions(ctx: Ctx, W: number, H: number, words: CaptionWord[
 
   ctx.translate(cx, cy);
   if (st.rotation) ctx.rotate((st.rotation * Math.PI) / 180);
-  // page-level animation
   let pageScale = 1;
   if (st.animation === 'zoom') pageScale = 0.6 + 0.4 * ease('back', clamp(pageAge / 0.25, 0, 1));
   ctx.scale(pageScale, pageScale);
-
-  const lineWidths = lines.map((l) => l.reduce((a, it, i) => a + it.width + (i ? space : 0), 0));
-  const blockW = Math.max(...lineWidths);
   const pad = st.bgPadding * scale;
 
   if (st.bgMode === 'block' && st.bgOpacity > 0) {
     ctx.fillStyle = withAlpha(st.bgColor, st.bgOpacity);
-    const bx = st.align === 'left' ? -blockW / 2 : st.align === 'right' ? -blockW / 2 : -blockW / 2;
-    roundRect(ctx, bx - pad, -blockH / 2 - pad * 0.6, blockW + pad * 2, blockH + pad * 1.2, st.bgRadius * scale);
+    roundRect(ctx, -blockW / 2 - pad, -blockH / 2 - pad * 0.6, blockW + pad * 2, blockH + pad * 1.2, st.bgRadius * scale);
     ctx.fill();
   }
 
-  // emoji above block
   if (st.emoji) {
     const ew = page.words.find((w) => w.emoji) ?? page.words.find((w) => emojiFor(w.text));
     const emo = ew ? ew.emoji ?? emojiFor(ew.text) : undefined;
@@ -251,42 +279,52 @@ export function drawCaptions(ctx: Ctx, W: number, H: number, words: CaptionWord[
       ctx.textAlign = 'center';
       ctx.fillText(emo, 0, -blockH / 2 - size * 0.85);
       ctx.restore();
-      ctx.font = font;
     }
   }
 
   let wordIndex = 0;
+  let yCursor = -blockH / 2;
   lines.forEach((ln, li) => {
-    const lwid = lineWidths[li];
-    let x = st.align === 'left' ? -blockW / 2 : st.align === 'right' ? blockW / 2 - lwid : -lwid / 2;
-    const y = -blockH / 2 + lh * li + lh / 2;
+    const ls = lineScale[li];
+    const lwid = lineWidths[li] * ls;
+    const lh = lineH[li];
+    const y = yCursor + lh / 2;
+    yCursor += lh;
+    let align = st.align;
+    if (align === 'stagger') align = lines.length === 1 ? 'center' : li === 0 ? 'left' : li === lines.length - 1 ? 'right' : 'center';
+    const x0 = align === 'left' ? -blockW / 2 : align === 'right' ? blockW / 2 - lwid : -lwid / 2;
     if (st.bgMode === 'line' && st.bgOpacity > 0) {
       ctx.fillStyle = withAlpha(st.bgColor, st.bgOpacity);
-      roundRect(ctx, x - pad, y - lh / 2 - pad * 0.3, lwid + pad * 2, lh + pad * 0.6, st.bgRadius * scale);
+      roundRect(ctx, x0 - pad, y - lh / 2 - pad * 0.3, lwid + pad * 2, lh + pad * 0.6, st.bgRadius * scale);
       ctx.fill();
     }
+    ctx.save();
+    ctx.translate(x0, y);
+    ctx.scale(ls, ls);
+    let x = 0;
     for (const it of ln) {
-      drawWord(ctx, it.text, it.width, it.w, x, y, lh, size, st, t, scale, spd, wordIndex, page);
+      ctx.font = it.font;
+      drawWord(ctx, it.text, it.width, it.w, x, 0, lh / ls, size * it.scale, st, t, scale, spd, wordIndex, page, it.emph);
       x += it.width + space;
       wordIndex++;
     }
+    ctx.restore();
   });
   ctx.restore();
 }
 
 function drawWord(
   ctx: Ctx, text: string, width: number, w: CaptionWord, x: number, y: number, lh: number, size: number,
-  st: CaptionStyle, t: number, scale: number, spd: number, index: number, page: CaptionPage,
+  st: CaptionStyle, t: number, scale: number, spd: number, index: number, page: CaptionPage, emph: boolean,
 ) {
   const spoken = t >= w.start;
-  const nextIdx = page.words.indexOf(w) + 1;
-  const next = page.words[nextIdx];
-  const active = spoken && (t < w.end || (next ? t < next.start : true)) && (!next || t < next.start);
+  const next = page.words[page.words.indexOf(w) + 1];
+  const active = spoken && (!next || t < next.start);
   if (!st.showUpcoming && !spoken) return;
   const age = (t - w.start) * spd;
   const k = clamp(age / 0.22, 0, 1);
 
-  let sx = 1, sy = 1, dy = 0, dx = 0, alpha = 1, rot = 0, blur = 0, chars = text.length;
+  let sx = 1, sy = 1, dy = 0, dx = 0, alpha = 1, blur = 0, chars = text.length;
   const animApplies = !st.showUpcoming || st.animation === 'wave' || st.animation === 'shake' ? true : spoken;
   if (animApplies) {
     switch (st.animation) {
@@ -297,23 +335,22 @@ function drawWord(
       case 'typewriter': chars = spoken ? Math.ceil(text.length * clamp(age / 0.18, 0, 1)) : text.length; break;
       case 'shake': if (active) { dx = Math.sin(t * 70) * size * 0.04; dy = Math.cos(t * 55) * size * 0.04; } break;
       case 'blur-in': blur = spoken ? (1 - k) * 12 * scale : 0; alpha = spoken ? clamp(k * 1.5, 0, 1) : 1; break;
-      case 'glitch': break;
       case 'wave': dy = Math.sin(t * 6 + index * 0.9) * size * 0.08; break;
       case 'drop': dy = spoken ? -size * 1.2 * (1 - ease('bounce', k)) : 0; alpha = spoken ? clamp(k * 4, 0, 1) : 1; break;
       case 'flip': sy = spoken ? Math.max(0.01, ease('back', k)) : 1; break;
       case 'stretch': sx = spoken ? 0.3 + 0.7 * ease('elastic', k) : 1; sy = spoken ? 1 + 0.5 * (1 - k) : 1; break;
-      case 'rise': dy = spoken ? size * 0.25 * (1 - ease('easeOut', k)) : 0; alpha = spoken ? clamp(k * 2, 0, 1) : 1; rot = 0; break;
+      case 'rise': dy = spoken ? size * 0.25 * (1 - ease('easeOut', k)) : 0; alpha = spoken ? clamp(k * 2, 0, 1) : 1; break;
       default: break;
     }
   }
-  if (!active && spoken === false && st.inactiveOpacity < 1) alpha *= st.inactiveOpacity;
-  if (!active && st.inactiveOpacity < 1 && spoken) alpha *= st.inactiveOpacity;
+  if (!active && st.inactiveOpacity < 1) alpha *= st.inactiveOpacity;
 
-  const emph = st.keywordColors ? (w.highlight ? 1 : emphasisOf(w.text)) : (w.highlight ? 1 : 0);
+  const kw = st.keywordColors ? (w.highlight ? 1 : emphasisOf(w.text)) : 0;
   let color: string | CanvasGradient = st.color;
-  if (emph === 1) color = st.keywordColor;
-  else if (emph === 2) color = st.keywordColor2;
-  if (st.gradient && emph === 0) {
+  if (kw === 1) color = st.keywordColor;
+  else if (kw === 2) color = st.keywordColor2;
+  else if (emph && st.emphAuto && st.keywordColors) color = st.keywordColor;
+  if (st.gradient && kw === 0) {
     const g = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
     g.addColorStop(0, st.color);
     g.addColorStop(1, st.gradient);
@@ -327,9 +364,10 @@ function drawWord(
   if (active) {
     switch (st.highlight) {
       case 'color': color = st.activeColor; break;
+      case 'font': if (st.activeColor && st.activeColor !== st.color) color = st.activeColor; break;
       case 'box': boxBg = st.activeBg; color = st.activeColor; break;
       case 'underline': underline = true; color = st.activeColor; break;
-      case 'scale': sx *= st.activeScale; sy *= st.activeScale; color = emph ? color : st.activeColor; break;
+      case 'scale': sx *= st.activeScale; sy *= st.activeScale; color = kw ? color : st.activeColor; break;
       case 'glow': glow = st.activeColor; glowSize = Math.max(20, st.glowSize * 1.4); color = st.activeColor; break;
       case 'outline': stroke = st.activeColor; color = st.activeColor; break;
       default: break;
@@ -339,9 +377,7 @@ function drawWord(
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  const cxw = x + width / 2;
-  ctx.translate(cxw + dx, y + dy);
-  if (rot) ctx.rotate(rot);
+  ctx.translate(x + width / 2 + dx, y + dy);
   ctx.scale(sx, sy);
   const lx = -width / 2;
   const shownText = chars >= text.length ? text : text.slice(0, chars);
@@ -369,6 +405,7 @@ function drawWord(
     ctx.shadowBlur = glowSize * scale;
     ctx.fillStyle = glow;
     ctx.fillText(shownText, lx, 0);
+    if (glowSize > 15) ctx.fillText(shownText, lx, 0);
     ctx.restore();
   }
   if (st.shadowBlur > 0 || st.shadowX || st.shadowY) {

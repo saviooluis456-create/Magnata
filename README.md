@@ -38,7 +38,8 @@ Editor de vídeo para celular, feito como PWA (app web instalável). Tudo roda n
 **Legendas (inspiradas no Captions)**
 - Legendas automáticas com Whisper rodando no aparelho, com tempo de cada palavra e 10 idiomas
 - Opções sem internet: sincronizar a partir de um roteiro colado, ou importar SRT/VTT
-- 32 estilos prontos: palavra por palavra, karaokê, caixa na palavra ativa, neon, uma palavra por vez, gradiente…
+- 46 modelos de legenda em cartões com prévia real (mesmo motor do vídeo final), categorias, busca, cores editáveis direto no cartão e estilos salvos em "Personalizado". Inclui 14 modelos recriados a partir de referências do app Captions (brilho serifado, mínima, leve & negrito, meio amarelo escalonado, serifa fina, bloco gigante, caixa clara, espaçada, condensada solar, limpa, revista, pílula, faixa roxa, impacto amarelo)
+- Abas Modelos, Cor, Fonte, Emojis, Enfatizar (fonte, peso, itálico e tamanho próprios para palavras importantes), Pausas, Animação e Layout (alinhamento escalonado, linhas com a mesma largura)
 - Personalização completa: fonte (41 Google Fonts), tamanho, peso, cores, gradiente, contorno, sombra, brilho, fundo (por linha, em bloco ou por palavra), 8 modos de destaque, 15 animações, palavras por vez, posição (arrastando na prévia), rotação
 - Destaque automático de palavras-chave e emojis automáticos (PT/EN)
 

@@ -81,6 +81,14 @@ export function makeClip(kind: ClipKind, trackId: string, partial: Partial<Clip>
 
 export const defaultCaptionStyle = (): CaptionStyle => ({
   preset: 'impacto',
+  emphFont: null,
+  emphWeight: 900,
+  emphItalic: false,
+  emphScale: 1,
+  emphAuto: false,
+  lowercase: false,
+  fitLines: false,
+  pauseSplit: 0.7,
   font: 'Montserrat',
   weight: 900,
   italic: false,

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ASPECTS, defaultWheels, makeClip, uid } from '../model/defaults';
+import { ASPECTS, defaultCaptionStyle, defaultWheels, makeClip, uid } from '../model/defaults';
 import { clipEnd, clipsOnTrack, mainClips, maxClipDuration, mediaById, packMain, projectDuration } from '../model/timeline';
 import type { CaptionWord, Clip, MediaAsset, Project, Track, TrackKind } from '../model/types';
 import { db } from './db';
@@ -95,6 +95,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     p.markers = p.markers ?? [];
     p.media = p.media ?? [];
     p.customLuts = p.customLuts ?? [];
+    p.captions.style = { ...defaultCaptionStyle(), ...p.captions.style };
     for (const c of p.clips) {
       c.lut = c.lut ?? null;
       c.wheels = c.wheels ?? defaultWheels();

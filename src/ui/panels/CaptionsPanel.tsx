@@ -1,27 +1,32 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LANGUAGES, WHISPER_MODELS, alignScript, finalizeWords, parseSubtitles, transcribeProject } from '../../ai/transcribe';
-import { CAPTION_PRESETS, applyPreset } from '../../engine/captionStyles';
+import { CAPTION_CATEGORIES, CAPTION_PRESETS, PREVIEW_IDLE, applyPreset } from '../../engine/captionStyles';
+import { drawCaptions } from '../../engine/textRender';
 import { captionsToSrt } from '../../engine/exporter';
-import { FONTS } from '../../engine/fonts';
+import { FONTS, onFontsChanged } from '../../engine/fonts';
 import { emojiFor } from '../../engine/keywords';
-import { defaultCaptionStyle, uid } from '../../model/defaults';
+import { uid } from '../../model/defaults';
 import { formatTime, projectDuration } from '../../model/timeline';
-import type { CaptionAnim, CaptionHighlight, CaptionStyle } from '../../model/types';
+import type { CaptionAnim, CaptionHighlight, CaptionStyle, CaptionWord } from '../../model/types';
 import { useEditor } from '../../store/editor';
 import { downloadBlob, pickFiles } from '../actions';
-import { Chips, Grid, PALETTE, Section, Slider, Swatches, Tabs, Toggle } from '../components/ui';
+import { Chips, PALETTE, Section, Slider, Swatches, Tabs, Toggle } from '../components/ui';
 
-type Tab = 'generate' | 'styles' | 'custom' | 'edit';
+type Tab = 'models' | 'color' | 'font' | 'emoji' | 'emph' | 'pause' | 'anim' | 'layout' | 'edit' | 'generate';
 
 export function CaptionsPanel() {
   const hasWords = useEditor((s) => s.project!.captions.words.length > 0);
-  const [tab, setTab] = useState<Tab>(hasWords ? 'styles' : 'generate');
+  const [tab, setTab] = useState<Tab>(hasWords ? 'models' : 'generate');
   return (
     <>
-      <Tabs tabs={[{ id: 'generate', label: 'Gerar' }, { id: 'styles', label: 'Estilos' }, { id: 'custom', label: 'Personalizar' }, { id: 'edit', label: 'Editar texto' }]} value={tab} onChange={setTab} />
-      {tab === 'generate' && <Generate onDone={() => setTab('styles')} />}
-      {tab === 'styles' && <Styles />}
-      {tab === 'custom' && <Custom />}
+      <Tabs tabs={[
+        { id: 'models', label: 'Modelos' }, { id: 'color', label: 'Cor' }, { id: 'font', label: 'Fonte' }, { id: 'emoji', label: 'Emojis' },
+        { id: 'emph', label: 'Enfatizar' }, { id: 'pause', label: 'Pausas' }, { id: 'anim', label: 'Animação' }, { id: 'layout', label: 'Layout' },
+        { id: 'edit', label: 'Editar texto' }, { id: 'generate', label: 'Gerar' },
+      ]} value={tab} onChange={setTab} />
+      {tab === 'generate' && <Generate onDone={() => setTab('models')} />}
+      {tab === 'models' && <Models onEdit={() => setTab('font')} />}
+      {tab !== 'generate' && tab !== 'models' && tab !== 'edit' && <Custom tab={tab} />}
       {tab === 'edit' && <EditWords />}
     </>
   );
@@ -106,59 +111,97 @@ function Generate({ onDone }: { onDone: () => void }) {
   );
 }
 
-function PresetPreview({ s }: { s: CaptionStyle }) {
-  const words = ['ISSO', 'MUDA', 'TUDO'];
-  return (
-    <div className="cap-preset" style={{ fontFamily: `"${s.font}"`, fontWeight: s.weight, fontStyle: s.italic ? 'italic' : 'normal', fontSize: 13, letterSpacing: s.letterSpacing / 6 }}>
-      <span style={{ background: s.bgMode === 'block' || s.bgMode === 'line' ? hexA(s.bgColor, s.bgOpacity) : undefined, padding: s.bgMode !== 'none' ? '2px 4px' : 0, borderRadius: 4 }}>
-        {words.map((w, i) => {
-          const active = i === 1;
-          const isKw = s.keywordColors && i === 2;
-          const color = active && s.highlight !== 'none' && s.highlight !== 'karaoke' && s.highlight !== 'box' ? s.activeColor : active && s.highlight === 'box' ? s.activeColor : isKw ? s.keywordColor : s.color === 'rgba(255,255,255,0)' ? 'transparent' : s.color;
-          const text = s.uppercase ? w : w.charAt(0) + w.slice(1).toLowerCase();
-          return (
-            <span key={i} style={{
-              color, margin: '0 2px', display: 'inline-block',
-              transform: active && s.highlight === 'scale' ? `scale(${s.activeScale})` : undefined,
-              background: active && s.highlight === 'box' ? s.activeBg : s.bgMode === 'word' ? hexA(s.bgColor, s.bgOpacity) : undefined,
-              padding: (active && s.highlight === 'box') || s.bgMode === 'word' ? '1px 3px' : 0, borderRadius: 3,
-              WebkitTextStroke: s.strokeWidth ? `${Math.min(2, s.strokeWidth / 6)}px ${active && s.highlight === 'outline' ? s.activeColor : s.strokeColor}` : undefined,
-              textShadow: s.glowSize ? `0 0 6px ${active && s.highlight === 'glow' ? s.activeColor : s.glowColor}` : s.shadowBlur ? '0 1px 3px rgba(0,0,0,.8)' : undefined,
-              textDecoration: active && s.highlight === 'underline' ? `underline 2px ${s.activeColor}` : undefined,
-              backgroundImage: s.gradient && !active ? `linear-gradient(${s.color}, ${s.gradient})` : undefined,
-              WebkitBackgroundClip: s.gradient && !active ? 'text' : undefined,
-            } as React.CSSProperties}>{s.highlight === 'karaoke' && i === 0 ? <span style={{ color: s.activeColor }}>{text}</span> : text}</span>
-          );
-        })}
-      </span>
-    </div>
-  );
+const SAMPLE: CaptionWord[] = [
+  { id: 's1', text: 'Quick', start: 0.5, end: 0.9 }, { id: 's2', text: 'brown', start: 0.9, end: 1.3 },
+  { id: 's3', text: 'fox', start: 1.3, end: 1.7 }, { id: 's4', text: 'jumped', start: 1.7, end: 2.1, highlight: true },
+];
+
+/** Live preview rendered with the real caption engine (identical to the video output). */
+function CaptionPreview({ style, height: h0 }: { style: CaptionStyle; height?: number }) {
+  const height = h0 ?? (style.fitLines || (style.emphScale ?? 1) > 1.3 || style.wordsPerPage <= 2 ? 200 : 150);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [fontTick, setFontTick] = useState(0);
+  useEffect(() => { const off = onFontsChanged(() => setFontTick((t) => t + 1)); return () => { off(); }; }, []);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = Math.round((c.clientWidth || 320) * dpr), H = Math.round(height * dpr);
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d')!;
+    ctx.clearRect(0, 0, W, H);
+    const st: CaptionStyle = { ...style, x: 0.5, y: 0.5, rotation: 0, showUpcoming: true, animation: 'none', emoji: false, wordsPerPage: Math.max(style.wordsPerPage, 2), ...(PREVIEW_IDLE.has(style.preset) ? { highlight: 'none' as const } : {}) };
+    drawCaptions(ctx, W, H, SAMPLE, st, 0.6, (W / 900) * (style.fitLines ? 0.8 : 1));
+  }, [style, height, fontTick]);
+  return <canvas ref={ref} style={{ width: '100%', height, display: 'block' }} />;
 }
 
-function hexA(hex: string, a: number) {
-  if (!hex.startsWith('#')) return hex;
-  const n = parseInt(hex.slice(1, 7), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+const LS_KEY = 'magnata.captionStyles';
+function loadSaved(): { id: string; name: string; style: CaptionStyle }[] {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? '[]'); } catch { return []; }
 }
 
-function Styles() {
-  const style = useEditor((s) => s.project!.captions.style);
+function swatchKeys(s: CaptionStyle): (keyof CaptionStyle)[] {
+  return ['color', 'activeColor', s.bgMode !== 'none' ? 'bgColor' : s.strokeWidth > 0 ? 'strokeColor' : 'shadowColor', s.glowSize > 0 ? 'glowColor' : 'keywordColor'];
+}
+const toHex = (c: string) => {
+  if (/^#[0-9a-f]{6}$/i.test(c)) return c;
+  const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  return m ? '#' + [m[1], m[2], m[3]].map((x) => (+x).toString(16).padStart(2, '0')).join('') : '#000000';
+};
+
+function Models({ onEdit }: { onEdit: () => void }) {
+  const current = useEditor((s) => s.project!.captions.style);
+  const [cat, setCat] = useState('featured');
+  const [q, setQ] = useState('');
+  const [saved, setSaved] = useState(loadSaved);
   const st = useEditor.getState;
+  const apply = (style: CaptionStyle) => st().edit((d) => { d.captions.style = { ...style, x: d.captions.style.x, y: d.captions.style.y }; d.captions.enabled = true; });
+  const list: { id: string; name: string; style: CaptionStyle; tag?: string; custom?: boolean }[] =
+    cat === 'custom'
+      ? saved.map((x) => ({ ...x, custom: true }))
+      : CAPTION_PRESETS.filter((p) => cat === 'all' || p.cats?.includes(cat)).map((p) => ({ id: p.id, name: p.name, tag: p.tag, style: applyPreset(current, p.id) }));
+  const shown = list.filter((x) => !q.trim() || x.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const saveCurrent = () => {
+    const name = prompt('Nome do seu estilo', 'Meu estilo');
+    if (!name) return;
+    const next = [{ id: 'u' + Date.now(), name, style: { ...current, preset: 'u' + Date.now() } }, ...saved];
+    setSaved(next);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch { /* */ }
+    setCat('custom');
+  };
   return (
     <>
-      <Grid cols={3}>
-        {CAPTION_PRESETS.map((p) => {
-          const s = { ...defaultCaptionStyle(), ...p.style };
+      <Chips scroll options={[{ v: 'custom', label: 'Personalizado' }, ...CAPTION_CATEGORIES.map((c) => ({ v: c.id, label: c.name }))]} value={cat} onChange={setCat} />
+      <input className="field" style={{ margin: '10px 0' }} placeholder="🔍 Buscar estilos…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar estilos" />
+      {cat === 'custom' && <button className="btn small block" style={{ marginBottom: 10 }} onClick={saveCurrent}>+ Salvar o estilo atual</button>}
+      {cat === 'custom' && !saved.length && <p className="hint">Personalize um modelo e toque em “Salvar o estilo atual” para guardá-lo aqui.</p>}
+      <div className="cap-cards">
+        {shown.map((x) => {
+          const active = current.preset === x.style.preset;
           return (
-            <button key={p.id} className={`tile ${style.preset === p.id ? 'active' : ''}`} onClick={() => st().edit((d) => { d.captions.style = applyPreset(d.captions.style, p.id); d.captions.enabled = true; })} data-testid={`cap-preset-${p.id}`}>
-              <div className="tile-icon" style={{ aspectRatio: '1.4' }}><PresetPreview s={s} /></div>
-              <div className="tile-label">{p.name}</div>
-              {p.tag && <span className="tile-badge">{p.tag}</span>}
-            </button>
+            <div key={x.id} className={`cap-card ${active ? 'active' : ''}`} data-testid={`cap-preset-${x.id}`}>
+              <button className="cap-card-preview" onClick={() => apply(x.style)} aria-label={`Aplicar ${x.name}`}>
+                <CaptionPreview style={x.style} />
+              </button>
+              <div className="cap-card-foot">
+                <b>{x.name}</b>
+                {x.tag && <span className="cap-tag">{x.tag}</span>}
+                <div style={{ flex: 1 }} />
+                <span className="cap-drop" aria-hidden="true">💧</span>
+                {swatchKeys(x.style).map((k) => (
+                  <label key={k} className="cap-sw" style={{ background: String(x.style[k]) }} title="Alterar cor">
+                    <input type="color" value={toHex(String(x.style[k]))} onChange={(e) => { const v = e.target.value; st().edit((d) => { if (!active) d.captions.style = { ...x.style, x: d.captions.style.x, y: d.captions.style.y }; (d.captions.style as unknown as Record<string, unknown>)[k] = v; d.captions.enabled = true; }, 'capsw' + k); }} />
+                  </label>
+                ))}
+                <button className="cap-edit" onClick={() => { if (!active) apply(x.style); onEdit(); }} aria-label={`Editar ${x.name}`}>✎</button>
+                {x.custom && <button className="cap-edit" onClick={() => { const next = saved.filter((s) => s.id !== x.id); setSaved(next); try { localStorage.setItem(LS_KEY, JSON.stringify(next)); } catch { /* */ } }} aria-label="Excluir">✕</button>}
+              </div>
+            </div>
           );
         })}
-      </Grid>
-      <p className="hint">Arraste as legendas na pré-visualização (com este painel aberto) para reposicionar.</p>
+      </div>
+      <p className="hint">A prévia usa o mesmo motor do vídeo final. Toque nas bolinhas para trocar as cores, ou no lápis para personalizar.</p>
     </>
   );
 }
@@ -170,81 +213,40 @@ const ANIMS: { v: CaptionAnim; label: string }[] = [
 ];
 const HIGHLIGHTS: { v: CaptionHighlight; label: string }[] = [
   { v: 'none', label: 'Nenhum' }, { v: 'color', label: 'Cor' }, { v: 'box', label: 'Caixa' }, { v: 'underline', label: 'Sublinhado' },
-  { v: 'scale', label: 'Aumentar' }, { v: 'karaoke', label: 'Karaokê' }, { v: 'glow', label: 'Brilho' }, { v: 'outline', label: 'Contorno' },
+  { v: 'scale', label: 'Aumentar' }, { v: 'font', label: 'Trocar fonte' }, { v: 'karaoke', label: 'Karaokê' }, { v: 'glow', label: 'Brilho' }, { v: 'outline', label: 'Contorno' },
 ];
 
-function Custom() {
+function Custom({ tab }: { tab: Exclude<Tab, 'models' | 'edit' | 'generate'> }) {
   const s = useEditor((x) => x.project!.captions.style);
-  const [tab, setTab] = useState<'text' | 'highlight' | 'anim' | 'layout' | 'effects'>('text');
+  const words = useEditor((x) => x.project!.captions.words);
   const set = (fn: (c: CaptionStyle) => void, key = 'cs') => useEditor.getState().edit((p) => fn(p.captions.style), key);
   return (
     <>
-      <Chips options={[{ v: 'text', label: 'Fonte' }, { v: 'highlight', label: 'Destaque' }, { v: 'anim', label: 'Animação' }, { v: 'layout', label: 'Layout' }, { v: 'effects', label: 'Efeitos' }]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
-      {tab === 'text' && (
+      <div style={{ borderRadius: 14, overflow: 'hidden', background: 'linear-gradient(135deg,#2a2340,#121220)', marginBottom: 10 }}><CaptionPreview style={s} height={120} /></div>
+      {tab === 'font' && (
         <>
-          <div className="font-list" style={{ marginTop: 10 }}>
+          <div className="font-list">
             {FONTS.map((f) => <button key={f.family} className={s.font === f.family ? 'on' : ''} style={{ fontFamily: `"${f.family}"` }} onClick={() => set((c) => { c.font = f.family; }, 'cf')}>{f.family}</button>)}
           </div>
           <Slider label="Tamanho" value={s.size} min={24} max={220} step={1} onChange={(v) => set((c) => { c.size = v; }, 'csz')} />
-          <Chips options={[400, 600, 700, 800, 900].map((v) => ({ v, label: String(v) }))} value={s.weight} onChange={(v) => set((c) => { c.weight = v; })} />
-          <Toggle label="MAIÚSCULAS" value={s.uppercase} onChange={(v) => set((c) => { c.uppercase = v; })} />
+          <Chips options={[300, 400, 500, 600, 700, 800, 900].map((v) => ({ v, label: String(v) }))} value={s.weight} onChange={(v) => set((c) => { c.weight = v; })} />
+          <Chips options={[{ v: 'none', label: 'Aa Normal' }, { v: 'upper', label: 'AA MAIÚSCULAS' }, { v: 'lower', label: 'aa minúsculas' }]} value={s.uppercase ? 'upper' : s.lowercase ? 'lower' : 'none'} onChange={(v) => set((c) => { c.uppercase = v === 'upper'; c.lowercase = v === 'lower'; })} />
           <Toggle label="Itálico" value={s.italic} onChange={(v) => set((c) => { c.italic = v; })} />
           <Toggle label="Remover pontuação" value={s.removePunctuation} onChange={(v) => set((c) => { c.removePunctuation = v; })} />
-          <Section title="Cor do texto"><Swatches colors={PALETTE} value={s.color} onChange={(v) => set((c) => { c.color = v; }, 'cc')} /></Section>
+          <Slider label="Espaçamento entre letras" value={s.letterSpacing} min={-6} max={30} step={0.5} onChange={(v) => set((c) => { c.letterSpacing = v; }, 'cls')} />
+          <Slider label="Altura da linha" value={s.lineHeight} min={0.8} max={2} step={0.02} onChange={(v) => set((c) => { c.lineHeight = v; }, 'clh')} />
+        </>
+      )}
+      {tab === 'color' && (
+        <>
+          <Section title="Texto"><Swatches colors={PALETTE} value={s.color} onChange={(v) => set((c) => { c.color = v; }, 'cc')} /></Section>
+          <Section title="Palavra falada (destaque)"><Swatches colors={PALETTE} value={s.activeColor} onChange={(v) => set((c) => { c.activeColor = v; if (c.highlight === 'none') c.highlight = 'color'; }, 'cac')} /></Section>
+          {s.highlight === 'box' && <Section title="Caixa da palavra falada"><Swatches colors={PALETTE} value={s.activeBg} onChange={(v) => set((c) => { c.activeBg = v; }, 'cab')} /></Section>}
           <Section title="Gradiente" right={s.gradient ? <button className="btn small ghost" onClick={() => set((c) => { c.gradient = null; })}>Remover</button> : undefined}>
             <Swatches colors={PALETTE} value={s.gradient ?? ''} onChange={(v) => set((c) => { c.gradient = v; }, 'cg')} />
           </Section>
-          <Slider label="Espaçamento" value={s.letterSpacing} min={-5} max={30} step={0.5} onChange={(v) => set((c) => { c.letterSpacing = v; }, 'cls')} />
-          <Slider label="Altura da linha" value={s.lineHeight} min={0.8} max={2} step={0.05} onChange={(v) => set((c) => { c.lineHeight = v; }, 'clh')} />
-        </>
-      )}
-      {tab === 'highlight' && (
-        <>
-          <Section title="Palavra falada"><Chips options={HIGHLIGHTS} value={s.highlight} onChange={(v) => set((c) => { c.highlight = v; })} /></Section>
-          <Section title="Cor de destaque"><Swatches colors={PALETTE} value={s.activeColor} onChange={(v) => set((c) => { c.activeColor = v; }, 'cac')} /></Section>
-          {s.highlight === 'box' && <Section title="Cor da caixa"><Swatches colors={PALETTE} value={s.activeBg} onChange={(v) => set((c) => { c.activeBg = v; }, 'cab')} /></Section>}
-          {s.highlight === 'scale' && <Slider label="Aumento" value={s.activeScale} min={1} max={1.8} step={0.01} onChange={(v) => set((c) => { c.activeScale = v; }, 'cas')} />}
-          <Slider label="Opacidade das outras palavras" value={s.inactiveOpacity} min={0.1} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.inactiveOpacity = v; }, 'cio')} />
-          <Toggle label="Mostrar palavras futuras" hint="Desligado: as palavras aparecem conforme são faladas" value={s.showUpcoming} onChange={(v) => set((c) => { c.showUpcoming = v; })} />
-          <Section title="Palavras-chave automáticas">
-            <Toggle label="Colorir palavras importantes" hint="Números, palavras de impacto e negações" value={s.keywordColors} onChange={(v) => set((c) => { c.keywordColors = v; })} />
-            {s.keywordColors && (
-              <>
-                <div className="hint">Positivas / impacto</div>
-                <Swatches colors={PALETTE} value={s.keywordColor} onChange={(v) => set((c) => { c.keywordColor = v; }, 'ckc')} />
-                <div className="hint">Negativas</div>
-                <Swatches colors={PALETTE} value={s.keywordColor2} onChange={(v) => set((c) => { c.keywordColor2 = v; }, 'ckc2')} />
-              </>
-            )}
-            <Toggle label="Emojis automáticos" hint="Adiciona emoji contextual acima da frase" value={s.emoji} onChange={(v) => set((c) => { c.emoji = v; })} />
-          </Section>
-        </>
-      )}
-      {tab === 'anim' && (
-        <>
-          <Chips options={ANIMS} value={s.animation} onChange={(v) => set((c) => { c.animation = v; })} />
-          <Slider label="Velocidade da animação" value={s.animSpeed} min={0.3} max={3} step={0.05} format={(v) => `${v.toFixed(2)}x`} onChange={(v) => set((c) => { c.animSpeed = v; }, 'casp')} />
-        </>
-      )}
-      {tab === 'layout' && (
-        <>
-          <Slider label="Palavras por vez" value={s.wordsPerPage} min={1} max={12} step={1} onChange={(v) => set((c) => { c.wordsPerPage = v; }, 'cwp')} />
-          <Slider label="Caracteres por linha" value={s.maxCharsPerLine} min={6} max={40} step={1} onChange={(v) => set((c) => { c.maxCharsPerLine = v; }, 'cmc')} />
-          <Slider label="Posição vertical" value={s.y} min={0.05} max={0.95} step={0.005} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.y = v; }, 'cy')} />
-          <Slider label="Posição horizontal" value={s.x} min={0.05} max={0.95} step={0.005} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.x = v; }, 'cx')} />
-          <Slider label="Rotação" value={s.rotation} min={-30} max={30} step={0.5} center={0} format={(v) => `${v}°`} onChange={(v) => set((c) => { c.rotation = v; }, 'cr')} />
-          <Chips options={[{ v: 'left', label: 'Esquerda' }, { v: 'center', label: 'Centro' }, { v: 'right', label: 'Direita' }]} value={s.align} onChange={(v) => set((c) => { c.align = v as CaptionStyle['align']; })} />
-          <div className="row" style={{ marginTop: 10 }}>
-            <button className="btn small" onClick={() => set((c) => { c.y = 0.2; })}>Topo</button>
-            <button className="btn small" onClick={() => set((c) => { c.y = 0.5; })}>Meio</button>
-            <button className="btn small" onClick={() => set((c) => { c.y = 0.72; })}>Inferior</button>
-          </div>
-        </>
-      )}
-      {tab === 'effects' && (
-        <>
           <Section title="Contorno">
-            <Swatches colors={PALETTE} value={s.strokeColor} onChange={(v) => set((c) => { c.strokeColor = v; }, 'csc')} />
+            <Swatches colors={PALETTE} value={s.strokeColor} onChange={(v) => set((c) => { c.strokeColor = v; if (!c.strokeWidth) c.strokeWidth = 6; }, 'csc')} />
             <Slider label="Espessura" value={s.strokeWidth} min={0} max={24} step={0.5} onChange={(v) => set((c) => { c.strokeWidth = v; }, 'csw')} />
           </Section>
           <Section title="Sombra">
@@ -257,16 +259,88 @@ function Custom() {
             <Slider label="Intensidade" value={s.glowSize} min={0} max={60} step={1} onChange={(v) => set((c) => { c.glowSize = v; }, 'cgs')} />
           </Section>
           <Section title="Fundo">
-            <Chips options={[{ v: 'none', label: 'Nenhum' }, { v: 'line', label: 'Por linha' }, { v: 'block', label: 'Bloco' }, { v: 'word', label: 'Por palavra' }]} value={s.bgMode} onChange={(v) => set((c) => { c.bgMode = v as CaptionStyle['bgMode']; })} />
+            <Chips options={[{ v: 'none', label: 'Nenhum' }, { v: 'line', label: 'Por linha' }, { v: 'block', label: 'Bloco' }, { v: 'word', label: 'Por palavra' }]} value={s.bgMode} onChange={(v) => set((c) => { c.bgMode = v as CaptionStyle['bgMode']; if (c.bgOpacity === 0) c.bgOpacity = 0.85; })} />
             {s.bgMode !== 'none' && (
               <>
                 <Swatches colors={PALETTE} value={s.bgColor} onChange={(v) => set((c) => { c.bgColor = v; }, 'cbc')} />
                 <Slider label="Opacidade" value={s.bgOpacity} min={0} max={1} step={0.01} onChange={(v) => set((c) => { c.bgOpacity = v; }, 'cbo')} />
                 <Slider label="Margem" value={s.bgPadding} min={0} max={60} step={1} onChange={(v) => set((c) => { c.bgPadding = v; }, 'cbp')} />
-                <Slider label="Arredondamento" value={s.bgRadius} min={0} max={60} step={1} onChange={(v) => set((c) => { c.bgRadius = v; }, 'cbr')} />
+                <Slider label="Arredondamento" value={s.bgRadius} min={0} max={100} step={1} onChange={(v) => set((c) => { c.bgRadius = v; }, 'cbr')} />
               </>
             )}
           </Section>
+        </>
+      )}
+      {tab === 'emoji' && (
+        <>
+          <Toggle label="Emojis automáticos" hint="Emoji contextual acima de cada frase" value={s.emoji} onChange={(v) => set((c) => { c.emoji = v; })} />
+          <button className="btn small" onClick={() => useEditor.getState().edit((p) => { p.captions.words.forEach((w) => { w.emoji = emojiFor(w.text); }); })}>Recalcular emojis</button>
+          <Section title="Emojis por palavra">
+            <div className="list">
+              {words.filter((w) => w.emoji).slice(0, 80).map((w) => (
+                <div key={w.id} className="list-item">
+                  <span style={{ fontSize: 22 }}>{w.emoji}</span>
+                  <div className="grow">{w.text}</div>
+                  <button className="btn small danger" onClick={() => useEditor.getState().edit((p) => { const x = p.captions.words.find((y) => y.id === w.id); if (x) x.emoji = undefined; })}>Remover</button>
+                </div>
+              ))}
+              {!words.some((w) => w.emoji) && <p className="hint">Nenhum emoji ainda. Ative os emojis automáticos ou recalcule.</p>}
+            </div>
+          </Section>
+        </>
+      )}
+      {tab === 'emph' && (
+        <>
+          <Section title="Palavra falada"><Chips options={HIGHLIGHTS} value={s.highlight} onChange={(v) => set((c) => { c.highlight = v; })} /></Section>
+          {s.highlight === 'scale' && <Slider label="Aumento" value={s.activeScale} min={1} max={1.8} step={0.01} onChange={(v) => set((c) => { c.activeScale = v; }, 'cas')} />}
+          <Slider label="Opacidade das outras palavras" value={s.inactiveOpacity} min={0.1} max={1} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.inactiveOpacity = v; }, 'cio')} />
+          <Toggle label="Mostrar palavras futuras" hint="Desligado: as palavras aparecem conforme são faladas" value={s.showUpcoming} onChange={(v) => set((c) => { c.showUpcoming = v; })} />
+          <Section title="Palavras enfatizadas">
+            <Toggle label="Enfatizar palavras importantes" hint="Números, palavras de impacto e as marcadas com ★" value={s.keywordColors} onChange={(v) => set((c) => { c.keywordColors = v; })} />
+            <Toggle label="Escolher 1 palavra por frase automaticamente" value={s.emphAuto} onChange={(v) => set((c) => { c.emphAuto = v; })} />
+            <div className="hint">Cor (positivas / negativas)</div>
+            <Swatches colors={PALETTE} value={s.keywordColor} onChange={(v) => set((c) => { c.keywordColor = v; }, 'ckc')} />
+            <div style={{ height: 8 }} />
+            <Swatches colors={PALETTE} value={s.keywordColor2} onChange={(v) => set((c) => { c.keywordColor2 = v; }, 'ckc2')} />
+            <div className="hint" style={{ marginTop: 10 }}>Fonte da ênfase</div>
+            <div className="font-list">
+              <button className={!s.emphFont ? 'on' : ''} onClick={() => set((c) => { c.emphFont = null; })}>Mesma</button>
+              {FONTS.map((f) => <button key={f.family} className={s.emphFont === f.family ? 'on' : ''} style={{ fontFamily: `"${f.family}"` }} onClick={() => set((c) => { c.emphFont = f.family; }, 'cef')}>{f.family}</button>)}
+            </div>
+            <Chips options={[300, 400, 600, 700, 800, 900].map((v) => ({ v, label: String(v) }))} value={s.emphWeight} onChange={(v) => set((c) => { c.emphWeight = v; })} />
+            <Toggle label="Ênfase em itálico" value={s.emphItalic} onChange={(v) => set((c) => { c.emphItalic = v; })} />
+            <Slider label="Tamanho da ênfase" value={s.emphScale} min={0.8} max={2} step={0.05} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.emphScale = v; }, 'ces')} />
+            <p className="hint">Marque palavras específicas com ★ na aba “Editar texto”.</p>
+          </Section>
+        </>
+      )}
+      {tab === 'pause' && (
+        <>
+          <Slider label="Nova frase após pausa de" value={s.pauseSplit} min={0.2} max={2} step={0.05} format={(v) => `${v.toFixed(2)}s`} onChange={(v) => set((c) => { c.pauseSplit = v; }, 'cps')} />
+          <Slider label="Máximo de palavras na tela" value={s.wordsPerPage} min={1} max={12} step={1} onChange={(v) => set((c) => { c.wordsPerPage = v; }, 'cwp')} />
+          <p className="hint">As legendas trocam de frase sempre que há um silêncio maior que o valor acima — assim o texto acompanha o ritmo da fala.</p>
+          <button className="btn small" onClick={() => useEditor.getState().openPanel('ai')}>✂️ Remover pausas do vídeo (IA)</button>
+        </>
+      )}
+      {tab === 'anim' && (
+        <>
+          <Chips options={ANIMS} value={s.animation} onChange={(v) => set((c) => { c.animation = v; })} />
+          <Slider label="Velocidade da animação" value={s.animSpeed} min={0.3} max={3} step={0.05} format={(v) => `${v.toFixed(2)}x`} onChange={(v) => set((c) => { c.animSpeed = v; }, 'casp')} />
+        </>
+      )}
+      {tab === 'layout' && (
+        <>
+          <Slider label="Caracteres por linha" value={s.maxCharsPerLine} min={4} max={40} step={1} onChange={(v) => set((c) => { c.maxCharsPerLine = v; }, 'cmc')} />
+          <Slider label="Posição vertical" value={s.y} min={0.05} max={0.95} step={0.005} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.y = v; }, 'cy')} />
+          <Slider label="Posição horizontal" value={s.x} min={0.05} max={0.95} step={0.005} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => set((c) => { c.x = v; }, 'cx')} />
+          <Slider label="Rotação" value={s.rotation} min={-30} max={30} step={0.5} center={0} format={(v) => `${v}°`} onChange={(v) => set((c) => { c.rotation = v; }, 'cr')} />
+          <Chips options={[{ v: 'left', label: 'Esquerda' }, { v: 'center', label: 'Centro' }, { v: 'right', label: 'Direita' }, { v: 'stagger', label: 'Escalonado' }]} value={s.align} onChange={(v) => set((c) => { c.align = v as CaptionStyle['align']; })} />
+          <Toggle label="Linhas com a mesma largura" hint="Estilo pôster: cada linha é ampliada para preencher" value={s.fitLines} onChange={(v) => set((c) => { c.fitLines = v; })} />
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="btn small" onClick={() => set((c) => { c.y = 0.2; })}>Topo</button>
+            <button className="btn small" onClick={() => set((c) => { c.y = 0.5; })}>Meio</button>
+            <button className="btn small" onClick={() => set((c) => { c.y = 0.72; })}>Inferior</button>
+          </div>
         </>
       )}
     </>

@@ -210,10 +210,22 @@ export type CaptionAnim =
   | 'none' | 'pop' | 'bounce' | 'fade' | 'slide-up' | 'typewriter' | 'zoom' | 'shake'
   | 'blur-in' | 'glitch' | 'wave' | 'drop' | 'flip' | 'stretch' | 'rise';
 
-export type CaptionHighlight = 'none' | 'color' | 'box' | 'underline' | 'scale' | 'karaoke' | 'glow' | 'outline';
+export type CaptionHighlight = 'none' | 'color' | 'box' | 'underline' | 'scale' | 'karaoke' | 'glow' | 'outline' | 'font';
 
 export interface CaptionStyle {
   preset: string;
+  /** emphasized words (keywords, starred words, or the active word when highlight = 'font') */
+  emphFont: string | null;
+  emphWeight: number;
+  emphItalic: boolean;
+  emphScale: number;
+  /** pick the most important word of each phrase automatically when none is detected */
+  emphAuto: boolean;
+  lowercase: boolean;
+  /** scale each line to the same width (stacked poster look) */
+  fitLines: boolean;
+  /** start a new phrase after a pause longer than this (seconds) */
+  pauseSplit: number;
   font: string;
   weight: number;
   italic: boolean;
@@ -249,7 +261,7 @@ export interface CaptionStyle {
   x: number; // 0..1
   y: number; // 0..1
   rotation: number;
-  align: 'left' | 'center' | 'right';
+  align: 'left' | 'center' | 'right' | 'stagger';
   emoji: boolean;
   keywordColors: boolean;
   keywordColor: string;

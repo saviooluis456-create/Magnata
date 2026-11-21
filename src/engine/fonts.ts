@@ -1,10 +1,12 @@
 export interface FontDef { family: string; spec: string; cat: 'sans' | 'display' | 'serif' | 'script' | 'mono' | 'fun' }
 
 export const FONTS: FontDef[] = [
-  { family: 'Montserrat', spec: 'Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800;1,900', cat: 'sans' },
+  { family: 'Montserrat', spec: 'Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,800;1,900', cat: 'sans' },
   { family: 'Poppins', spec: 'Poppins:ital,wght@0,400;0,600;0,700;0,800;0,900;1,800', cat: 'sans' },
-  { family: 'Inter', spec: 'Inter:wght@400;600;700;800;900', cat: 'sans' },
+  { family: 'Inter', spec: 'Inter:wght@300;400;500;600;700;800;900', cat: 'sans' },
   { family: 'Roboto', spec: 'Roboto:ital,wght@0,400;0,700;0,900;1,900', cat: 'sans' },
+  { family: 'Inter Tight', spec: 'Inter Tight:ital,wght@0,500;0,600;0,700;0,800;0,900;1,700', cat: 'sans' },
+  { family: 'Manrope', spec: 'Manrope:wght@500;700;800', cat: 'sans' },
   { family: 'Rubik', spec: 'Rubik:wght@400;600;700;800;900', cat: 'sans' },
   { family: 'Nunito', spec: 'Nunito:wght@400;700;800;900', cat: 'sans' },
   { family: 'Raleway', spec: 'Raleway:wght@400;700;800;900', cat: 'sans' },
@@ -32,6 +34,8 @@ export const FONTS: FontDef[] = [
   { family: 'Orbitron', spec: 'Orbitron:wght@400;700;900', cat: 'mono' },
   { family: 'Audiowide', spec: 'Audiowide', cat: 'mono' },
   { family: 'Press Start 2P', spec: 'Press Start 2P', cat: 'mono' },
+  { family: 'Instrument Serif', spec: 'Instrument Serif:ital@0;1', cat: 'serif' },
+  { family: 'Antonio', spec: 'Antonio:wght@500;600;700', cat: 'display' },
   { family: 'Playfair Display', spec: 'Playfair Display:ital,wght@0,400;0,700;0,900;1,700;1,900', cat: 'serif' },
   { family: 'Abril Fatface', spec: 'Abril Fatface', cat: 'serif' },
   { family: 'DM Serif Display', spec: 'DM Serif Display:ital@0;1', cat: 'serif' },
