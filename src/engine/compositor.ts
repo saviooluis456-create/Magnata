@@ -3,6 +3,7 @@ import type { BlendMode, Clip, Project } from '../model/types';
 import { animatedState } from './animations';
 import { EFFECT_MAP } from './effects';
 import { LOOK_MAP } from './filters';
+import { getLut } from './lut';
 import { FBO, GLSL_COMMON, Program, VS_FS, VS_QUAD, createTexture, hexToRgb, mat3, type GL } from './gl';
 import { drawCaptions, makeCanvas, renderText } from './textRender';
 import { TRANSITION_MAP } from './transitions';
@@ -44,7 +45,37 @@ uniform vec4 u_mask1; // type x y rot
 uniform vec4 u_mask2; // w h feather invert
 uniform vec4 u_mask3; // radius aspect
 uniform vec3 u_solid;
+uniform sampler2D u_lut;
+uniform float u_lutAmt;
+uniform float u_lutSize;
+uniform vec4 u_lift;
+uniform vec4 u_gamma;
+uniform vec4 u_gain;
+uniform vec4 u_offset;
 varying vec2 v_uv;
+
+vec3 applyLut(vec3 c){
+  float n = u_lutSize;
+  c = clamp(c, 0.0, 1.0);
+  float b = c.b * (n - 1.0);
+  float b0 = floor(b);
+  float b1 = min(b0 + 1.0, n - 1.0);
+  float f = b - b0;
+  float x = c.r * (n - 1.0) + 0.5;
+  float y = (c.g * (n - 1.0) + 0.5) / n;
+  vec3 s0 = texture2D(u_lut, vec2((b0 * n + x) / (n * n), y)).rgb;
+  vec3 s1 = texture2D(u_lut, vec2((b1 * n + x) / (n * n), y)).rgb;
+  return mix(s0, s1, f);
+}
+
+vec3 wheels(vec3 c){
+  vec3 L = u_lift.rgb * 0.2 + u_lift.a * 0.2;
+  vec3 G = 1.0 + u_gain.rgb * 0.5 + u_gain.a * 0.5;
+  vec3 M = max(1.0 + u_gamma.rgb * 0.5 + u_gamma.a * 0.5, vec3(0.05));
+  c = c * G + L * (1.0 - c);
+  c = pow(max(c, 0.0), 1.0 / M);
+  return c + u_offset.rgb * 0.15 + u_offset.a * 0.15;
+}
 
 vec3 hueShift(vec3 c, float h){
   float a = h * 3.14159;
@@ -117,6 +148,8 @@ void main(){
     float m = texture2D(u_seg, suv).r;
     a *= smoothstep(0.35, 0.65, m);
   }
+  if (u_lutAmt > 0.0) c = mix(c, applyLut(c), u_lutAmt);
+  c = wheels(c);
   c = grade(c, u_adj1.x, u_adj1.y, u_adj1.z, u_adj1.w, u_adj2.x, u_adj2.y, u_adj2.z, u_adj2.w, u_adj3.x, u_adj3.y, u_adj3.z);
   if (u_lookAmt > 0.0) {
     vec3 g = c;
@@ -229,6 +262,7 @@ export class Compositor {
   private capCanvas: HTMLCanvasElement | OffscreenCanvas | null = null;
   private frameNo = 0;
   private dummy!: WebGLTexture;
+  private lutTex = new Map<string, WebGLTexture>();
   lost = false;
   onLost?: () => void;
   onRestored?: () => void;
@@ -273,6 +307,7 @@ export class Compositor {
     this.textures.clear();
     this.effectProgs.clear();
     this.transProgs.clear();
+    this.lutTex.clear();
   }
 
   resize(w: number, h: number) {
@@ -435,6 +470,27 @@ export class Compositor {
     return e ? { entry: e, key } : null;
   }
 
+  private lutTexture(id: string): { tex: WebGLTexture; size: number } | null {
+    const d = getLut(id);
+    if (!d) return null;
+    let t = this.lutTex.get(id);
+    const gl = this.gl;
+    if (!t) {
+      t = createTexture(gl);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, d.size * d.size, d.size, 0, gl.RGBA, gl.UNSIGNED_BYTE, d.data);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      this.lutTex.set(id, t);
+    }
+    return { tex: t, size: d.size };
+  }
+
+  /** Neutral values for color uniforms (used by internal passes that reuse the layer shader). */
+  private neutralColor(P: Program) {
+    P.f1('u_lutAmt', 0).f4('u_lift', 0, 0, 0, 0).f4('u_gamma', 0, 0, 0, 0).f4('u_gain', 0, 0, 0, 0).f4('u_offset', 0, 0, 0, 0).i1('u_lut', 2);
+    this.bindTex(2, this.dummy);
+  }
+
   /** Renders a clip with color/effects into a layer FBO. Returns the FBO containing the result (or null). */
   private renderClip(project: Project, c: Clip, t: number, provider: SourceProvider, quality: 'preview' | 'export'): FBO | null {
     const gl = this.gl;
@@ -475,6 +531,14 @@ export class Compositor {
       P.f3('u_lookSh', sh[0], sh[1], sh[2]).f3('u_lookHi', hi[0], hi[1], hi[2]);
       P.f1('u_lookMode', look.mode ?? 0).f1('u_lookAmt', c.filter.intensity);
     } else P.f1('u_lookAmt', 0);
+    P.i1('u_lut', 2);
+    const lt0 = c.lut ? this.lutTexture(c.lut.id) : null;
+    if (lt0 && c.lut) { this.bindTex(2, lt0.tex); P.f1('u_lutAmt', c.lut.intensity).f1('u_lutSize', lt0.size); }
+    else { this.bindTex(2, this.dummy); P.f1('u_lutAmt', 0); }
+    const wh = c.wheels;
+    if (wh) { P.f4('u_lift', ...wh.lift).f4('u_gamma', ...wh.gamma).f4('u_gain', ...wh.gain).f4('u_offset', ...(wh.offset ?? [0, 0, 0, 0])); }
+    else P.f4('u_lift', 0, 0, 0, 0).f4('u_gamma', 0, 0, 0, 0).f4('u_gain', 0, 0, 0, 0).f4('u_offset', 0, 0, 0, 0);
+    if (src) this.bindTex(0, src.entry.tex);
     const ch = c.chroma;
     P.f4('u_chroma', ch.enabled ? 1 : 0, ch.similarity, ch.smoothness, ch.spill);
     const kc = hexToRgb(ch.color);
@@ -532,6 +596,8 @@ export class Compositor {
     P.f4('u_crop', tf.cropL, tf.cropT, tf.cropR, tf.cropB).f2('u_flip', 0, 0).f1('u_opacity', 1).f2('u_texel', 0.001, 0.001);
     P.f4('u_adj1', -0.05, 0, 0, 0).f4('u_adj2', 0, 0, 0, 0).f4('u_adj3', 0, 0, 0, 0).f4('u_adj4', 0, 0, 0, 0);
     P.f1('u_lookAmt', 0).f4('u_chroma', 0, 0, 0, 0).f4('u_mask1', 0, 0, 0, 0);
+    this.neutralColor(P);
+    this.bindTex(0, src.entry.tex);
     this.draw();
     const passes = 2 + Math.round(project.background.blur * 4);
     for (let i = 0; i < passes; i++) {
@@ -612,6 +678,7 @@ export class Compositor {
         gl.clear(gl.COLOR_BUFFER_BIT);
         P.i1('u_seg', 1);
         this.bindTex(1, this.dummy);
+        this.neutralColor(P);
         this.bindTex(0, e.tex);
         this.draw();
         this.composite(lay, 'normal', acc);
@@ -641,6 +708,7 @@ export class Compositor {
     this.transProgs.forEach((p) => p?.dispose());
     [this.layerProg, this.compProg, this.copyProg, this.fillProg, this.blurProg].forEach((p) => p?.dispose());
     gl.deleteTexture(this.dummy);
+    this.lutTex.forEach((t) => gl.deleteTexture(t));
     gl.deleteBuffer(this.quad);
     if (releaseContext) gl.getExtension('WEBGL_lose_context')?.loseContext();
   }

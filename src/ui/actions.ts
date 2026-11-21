@@ -1,3 +1,4 @@
+import { audioBufferToWav } from '../engine/audioMix';
 import { importBlob, importFile, kindOf } from '../engine/media';
 import type { Player } from '../engine/player';
 import { clipEnd, mainClips } from '../model/timeline';
@@ -55,6 +56,20 @@ export async function importGenerated(blob: Blob, name: string, target: 'main' |
   } finally {
     st.setBusy(null);
   }
+}
+
+/** Encodes a rendered AudioBuffer and places it on a free audio track at `start` seconds. */
+export async function addAudioBuffer(buf: AudioBuffer, name: string, start = 0, volume = 1): Promise<string | null> {
+  const st = useEditor.getState();
+  const a = await importBlob(audioBufferToWav(buf), `${name}.wav`);
+  a.name = name;
+  const prev = st.time;
+  useEditor.setState({ time: start });
+  st.addMedia([a], 'audio');
+  const id = useEditor.getState().selectedId;
+  if (id && volume !== 1) st.updateClip(id, (c) => { c.audio.volume = volume; });
+  useEditor.setState({ time: prev });
+  return id;
 }
 
 /** Clip to operate on: the selection, or the main clip under the playhead. */

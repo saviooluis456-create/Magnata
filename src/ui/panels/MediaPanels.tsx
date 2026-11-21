@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { audioBufferToWav } from '../../engine/audioMix';
 import { audioCtx } from '../../engine/media';
-import { SFX, sfxBuffer } from '../../engine/sfx';
+import { SFX, SFX_CATEGORIES, sfxBuffer, sfxDuration } from '../../engine/sfx';
+import { MusicLibrary } from './SoundtrackPanel';
 import { ASPECTS, makeClip } from '../../model/defaults';
 import { formatTime } from '../../model/timeline';
 import { useEditor } from '../../store/editor';
@@ -60,7 +61,8 @@ export function OverlayPanel() {
 }
 
 export function AudioPanel() {
-  const [tab, setTab] = useState<'music' | 'sfx'>('music');
+  const [tab, setTab] = useState<'library' | 'sfx' | 'mine'>('library');
+  const [cat, setCat] = useState('transicao');
   const allMedia = useEditor((s) => s.project!.media);
   const media = allMedia.filter((m) => m.kind === 'audio');
   const st = useEditor.getState;
@@ -68,19 +70,25 @@ export function AudioPanel() {
     const ctx = audioCtx();
     if (ctx.state === 'suspended') ctx.resume();
     const src = ctx.createBufferSource();
-    src.buffer = sfxBuffer(ctx, id, 1);
+    src.buffer = sfxBuffer(ctx, id, sfxDuration(id));
     src.connect(ctx.destination);
     src.start();
   };
   const addSfx = (id: string, name: string) => {
     const ctx = audioCtx();
-    const wav = audioBufferToWav(sfxBuffer(ctx, id, 1));
+    const wav = audioBufferToWav(sfxBuffer(ctx, id, sfxDuration(id)));
     importGenerated(wav, `${name}.wav`, 'audio');
   };
   return (
     <>
-      <Tabs tabs={[{ id: 'music', label: 'Músicas' }, { id: 'sfx', label: 'Efeitos sonoros' }]} value={tab} onChange={setTab} />
-      {tab === 'music' ? (
+      <Tabs tabs={[{ id: 'library', label: 'Músicas' }, { id: 'sfx', label: 'Efeitos sonoros' }, { id: 'mine', label: 'Meus áudios' }]} value={tab} onChange={setTab} />
+      {tab === 'library' && (
+        <>
+          <button className="btn primary block" style={{ marginBottom: 10 }} onClick={() => st().openPanel('soundtrack')}>✨ Criar trilha automática para este vídeo</button>
+          <MusicLibrary />
+        </>
+      )}
+      {tab === 'mine' && (
         <>
           <Grid cols={3}>
             <Tile label="Importar áudio" icon={<Icon name="audio" size={28} />} onClick={async () => importFiles(await pickFiles('audio/*,video/*'), 'audio')} />
@@ -100,17 +108,22 @@ export function AudioPanel() {
               </div>
             </Section>
           )}
-          <p className="hint">Dica: use a ferramenta “Batidas” em IA para cortar seus clipes no ritmo da música.</p>
+          <p className="hint">Dica: use “Sincronizar batidas” em IA para cortar seus clipes no ritmo da música.</p>
         </>
-      ) : (
-        <Grid cols={4}>
-          {SFX.map((s) => (
-            <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <Tile label={s.name} icon={s.icon} onClick={() => preview(s.id)} />
-              <button className="btn small" onClick={() => addSfx(s.id, s.name)} style={{ padding: '4px 6px' }}>+ Usar</button>
-            </div>
-          ))}
-        </Grid>
+      )}
+      {tab === 'sfx' && (
+        <>
+          <Tabs tabs={SFX_CATEGORIES.map((c) => ({ id: c.id, label: c.name }))} value={cat} onChange={setCat} />
+          <Grid cols={4}>
+            {SFX.filter((s) => s.cat === cat).map((s) => (
+              <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Tile label={s.name} icon={s.icon} onClick={() => preview(s.id)} />
+                <button className="btn small" onClick={() => addSfx(s.id, s.name)} style={{ padding: '4px 6px' }}>+ Usar</button>
+              </div>
+            ))}
+          </Grid>
+          <p className="hint">Toque para ouvir. Os efeitos são sintetizados no aparelho e livres de direitos.</p>
+        </>
       )}
     </>
   );

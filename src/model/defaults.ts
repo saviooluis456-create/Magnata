@@ -1,4 +1,5 @@
 import type {
+  Wheels,
   Adjust, AudioOpts, Captions, CaptionStyle, ChromaKey, Clip, ClipKind, Mask, Project, TextStyle, Track, Transform,
 } from './types';
 
@@ -25,6 +26,8 @@ export const defaultAdjust = (): Adjust => ({
   brightness: 0, contrast: 0, saturation: 0, exposure: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0,
   vibrance: 0, hue: 0, fade: 0, vignette: 0, sharpen: 0, grain: 0,
 });
+
+export const defaultWheels = (): Wheels => ({ lift: [0, 0, 0, 0], gamma: [0, 0, 0, 0], gain: [0, 0, 0, 0], offset: [0, 0, 0, 0] });
 
 export const defaultAudio = (): AudioOpts => ({
   volume: 1, muted: false, fadeIn: 0, fadeOut: 0, voiceFx: 'none', enhance: false, denoise: false, eqLow: 0, eqMid: 0, eqHigh: 0,
@@ -60,6 +63,9 @@ export function makeClip(kind: ClipKind, trackId: string, partial: Partial<Clip>
     blend: 'normal',
     adjust: defaultAdjust(),
     filter: null,
+    lut: null,
+    wheels: defaultWheels(),
+    camera: null,
     effects: [],
     transition: null,
     anims: { in: null, out: null, loop: null },
@@ -142,5 +148,6 @@ export function newProject(name: string, aspect = '9:16'): Project {
     captions: defaultCaptions(),
     markers: [],
     media: [],
+    customLuts: [],
   };
 }

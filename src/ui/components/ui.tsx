@@ -94,9 +94,9 @@ export function Tile(props: { label: string; icon?: ReactNode; active?: boolean;
   );
 }
 
-export function Chips<T extends string | number>(props: { options: { v: T; label: string; disabled?: boolean; hint?: string }[]; value: T; onChange: (v: T) => void }) {
+export function Chips<T extends string | number>(props: { options: { v: T; label: string; disabled?: boolean; hint?: string }[]; value: T; onChange: (v: T) => void; scroll?: boolean }) {
   return (
-    <div className="chips">
+    <div className={`chips ${props.scroll ? 'scroll' : ''}`}>
       {props.options.map((o) => (
         <button key={String(o.v)} disabled={o.disabled} className={props.value === o.v ? 'on' : ''} onClick={() => props.onChange(o.v)} title={o.hint}>
           {o.label}{o.hint && <small>{o.hint}</small>}
@@ -163,6 +163,8 @@ const ICONS: Record<string, ReactNode> = {
   chroma: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M7 17l4-6 3 4 2-2 3 4" /><circle cx="8.5" cy="8.5" r="1.5" /></>,
   blend: <><circle cx="9" cy="12" r="6" /><circle cx="15" cy="12" r="6" /></>,
   keyframe: <path d="M12 3l7 9-7 9-7-9z" />,
+  color: <><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" opacity=".4" /><circle cx="15.5" cy="8.5" r="2" fill="currentColor" /></>,
+  music: <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /><path d="M2 6l2-2M4 9H1" /></>,
   voice: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0014 0M12 18v3" /></>,
   transition: <><rect x="2" y="6" width="9" height="12" rx="1.5" /><rect x="13" y="6" width="9" height="12" rx="1.5" /><path d="M10 12h4" /></>,
   freeze: <><path d="M12 2v20M4.9 7l14.2 10M4.9 17L19.1 7" /></>,

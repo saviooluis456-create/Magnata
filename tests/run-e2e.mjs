@@ -167,6 +167,7 @@ await step('captions from script + preset', async () => {
 
 await step('import music to audio track', async () => {
   await tool('audio');
+  await page.getByRole('tab', { name: 'Meus áudios' }).click();
   await pick(() => page.getByRole('button', { name: 'Importar áudio' }).click(), [f('music.mp3')]);
   await page.waitForFunction(() => window.__editor.getState().project.clips.some((c) => c.kind === 'audio'), null, { timeout: 20000 });
   await closePanel();
@@ -208,6 +209,45 @@ await step('project persists after reload', async () => {
   await shot('08-reloaded');
 });
 
+await step('color: camera detection + LUT + wheels', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.openPanel(null); s.select(s.project.clips.find((c) => c.trackId === 'main' && c.kind === 'video').id); s.setTime(1); });
+  await tool('color');
+  await page.getByTestId('camera-detect').click();
+  await page.waitForFunction(() => window.__editor.getState().project.clips.some((c) => c.camera), null, { timeout: 30000 });
+  await page.getByRole('tab', { name: 'LUTs' }).click();
+  await page.getByRole('button', { name: 'Kodak 2383' }).click();
+  await page.getByRole('tab', { name: 'Rodas de cor' }).click();
+  const wheel = page.getByRole('slider', { name: 'Sombras (Lift)', exact: true });
+  const wb = await wheel.boundingBox();
+  await page.mouse.click(wb.x + wb.width * 0.8, wb.y + wb.height * 0.5);
+  const c = await page.evaluate(() => window.__editor.getState().project.clips.find((c) => c.id === window.__editor.getState().selectedId));
+  if (c.lut?.id !== 'film-2383' || !c.camera || Math.abs(c.wheels.lift[0]) < 0.05) throw new Error('color failed ' + JSON.stringify({ lut: c.lut, cam: c.camera, w: c.wheels }));
+  await shot('11-color');
+  await closePanel();
+});
+
+await step('AI soundtrack: analyze video and add music + sfx', async () => {
+  const before = await page.evaluate(() => window.__editor.getState().project.clips.filter((c) => c.kind === 'audio').length);
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.openPanel('soundtrack'); });
+  await page.getByTestId('soundtrack-analyze').click();
+  await page.getByTestId('soundtrack-plan').waitFor({ timeout: 60000 });
+  await shot('12-soundtrack-plan');
+  await page.getByTestId('soundtrack-create').click();
+  await page.waitForFunction((b) => window.__editor.getState().project.clips.filter((c) => c.kind === 'audio').length >= b + 1, before, { timeout: 120000 });
+  await closePanel().catch(() => {});
+});
+
+await step('music library track + categorized sfx', async () => {
+  const before = await page.evaluate(() => window.__editor.getState().project.clips.filter((c) => c.kind === 'audio').length);
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.openPanel('audio'); });
+  await page.getByTestId('use-track-lofi-11').click();
+  await page.waitForFunction((b) => window.__editor.getState().project.clips.filter((c) => c.kind === 'audio').length > b, before, { timeout: 120000 });
+  await page.getByRole('tab', { name: 'Efeitos sonoros' }).click();
+  await page.getByRole('tab', { name: 'Comédia' }).click();
+  await shot('13-sfx');
+  await closePanel().catch(() => {});
+});
+
 let exported = null;
 await step('export 720p MP4', async () => {
   await page.getByTestId('open-export').click();
@@ -224,7 +264,7 @@ await step('export 720p MP4', async () => {
   if (!v || v.width !== 720) throw new Error('bad video stream ' + JSON.stringify(v));
   if (!a) throw new Error('no audio stream');
   const dur = parseFloat(probe.format.duration);
-  if (dur < 9 || dur > 11.5) throw new Error('unexpected duration ' + dur);
+  if (dur < 9 || dur > 16) throw new Error('unexpected duration ' + dur);
   // decode fully to ensure no corruption
   execSync(`ffmpeg -v error -i "${exported}" -f null -`);
   // grab frames for visual inspection

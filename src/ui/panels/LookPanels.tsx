@@ -9,7 +9,7 @@ import { Grid, Section, Slider, Tabs, Tile } from '../components/ui';
 import { upd, useTargetClip } from './hooks';
 
 const CAT_STYLE: Record<string, [string, string]> = {
-  trend: ['🔥', 'linear-gradient(135deg,#f43f5e,#f97316)'], glitch: ['📺', 'linear-gradient(135deg,#06b6d4,#d946ef)'],
+  camera: ['🎥', 'linear-gradient(135deg,#0f172a,#475569)'], trend: ['🔥', 'linear-gradient(135deg,#f43f5e,#f97316)'], glitch: ['📺', 'linear-gradient(135deg,#06b6d4,#d946ef)'],
   retro: ['📼', 'linear-gradient(135deg,#a16207,#57534e)'], light: ['☀️', 'linear-gradient(135deg,#f59e0b,#fde68a)'],
   motion: ['🎥', 'linear-gradient(135deg,#6366f1,#22d3ee)'], distort: ['🌀', 'linear-gradient(135deg,#8b5cf6,#14b8a6)'],
   blur: ['◌', 'linear-gradient(135deg,#64748b,#cbd5e1)'], art: ['🎨', 'linear-gradient(135deg,#ec4899,#8b5cf6)'],

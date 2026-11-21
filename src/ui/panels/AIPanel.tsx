@@ -89,6 +89,8 @@ export function AIPanel() {
   return (
     <>
       <Grid cols={3}>
+        <Tile label="Trilha sonora automática" icon="🎵" onClick={() => st().openPanel('soundtrack')} badge="Novo" />
+        <Tile label="Correção de câmera" icon="🎥" onClick={() => st().openPanel('color')} badge="Novo" />
         <Tile label="Legendas automáticas" icon="💬" onClick={() => st().openPanel('captions')} badge="IA" />
         <Tile label="Remover silêncios" icon="✂️" onClick={() => setTool('silence')} badge="IA" />
         <Tile label="Remover fundo" icon="🧍" onClick={bgRemove} badge="IA" />

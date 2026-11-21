@@ -3,6 +3,7 @@ import { Player } from '../engine/player';
 import { animatedState } from '../engine/animations';
 import { renderText } from '../engine/textRender';
 import { onFontsChanged } from '../engine/fonts';
+import { onLutLoaded } from '../engine/lut';
 import { clearTextCache } from '../engine/textRender';
 import { ensureUrl, importBlob, importFile } from '../engine/media';
 import { makeClip } from '../model/defaults';
@@ -50,7 +51,8 @@ export default function Editor() {
       if (s.playing !== prev.playing) { if (s.playing) player.play(); else player.pause(); }
     });
     const offFonts = onFontsChanged(() => { clearTextCache(); player.invalidate(); });
-    return () => { unsub(); offFonts(); player.dispose(); session.player = null; };
+    const offLut = onLutLoaded(() => player.invalidate());
+    return () => { unsub(); offFonts(); offLut(); player.dispose(); session.player = null; };
   }, [st]);
 
   // stage sizing (fit project aspect into preview area)
@@ -386,6 +388,8 @@ function Toolbar({ panel }: { panel: Panel }) {
       { id: 'text', label: 'Texto', icon: 'text', panel: 'text' },
       { id: 'captions', label: 'Legendas', icon: 'captions', panel: 'captions' },
       { id: 'effects', label: 'Efeitos', icon: 'effects', panel: 'effects' },
+      { id: 'color', label: 'Cor', icon: 'color', panel: 'color' },
+      { id: 'soundtrack', label: 'Trilha IA', icon: 'music', panel: 'soundtrack' },
       { id: 'filters', label: 'Filtros', icon: 'filters', panel: 'filters' },
       { id: 'ai', label: 'IA', icon: 'ai', panel: 'ai' },
       { id: 'overlay', label: 'Sobrepor', icon: 'overlay', panel: 'overlay' },
@@ -411,6 +415,7 @@ function Toolbar({ panel }: { panel: Panel }) {
         { id: 'keyframes', label: 'Keyframes', icon: 'keyframe', panel: 'keyframes' as Panel },
       ] : []),
       ...(isVisual ? [
+        { id: 'color', label: 'Cor', icon: 'color', panel: 'color' as Panel },
         { id: 'filters', label: 'Filtros', icon: 'filters', panel: 'filters' as Panel },
         { id: 'adjust', label: 'Ajustar', icon: 'adjust', panel: 'adjust' as Panel },
         { id: 'mask', label: 'Máscara', icon: 'mask', panel: 'mask' as Panel },

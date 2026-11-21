@@ -2,6 +2,8 @@ import { useEditor, type Panel } from '../../store/editor';
 import { Icon } from '../components/ui';
 import { AIPanel } from './AIPanel';
 import { CaptionsPanel } from './CaptionsPanel';
+import { ColorPanel } from './ColorPanel';
+import { SoundtrackPanel } from './SoundtrackPanel';
 import { AnimationPanel, BlendPanel, ChromaPanel, KeyframesPanel, MaskPanel, SpeedPanel, TransformPanel, TransitionPanel, VoicePanel, VolumePanel } from './ClipPanels';
 import { ExportPanel } from './ExportPanel';
 import { AdjustPanel, EffectsPanel, FiltersPanel } from './LookPanels';
@@ -12,7 +14,7 @@ const TITLES: Partial<Record<Exclude<Panel, null>, string>> = {
   media: 'Mídia', audio: 'Áudio', text: 'Texto', textEdit: 'Editar texto', captions: 'Legendas', effects: 'Efeitos', filters: 'Filtros',
   adjust: 'Ajustes de cor', transition: 'Transição', speed: 'Velocidade', volume: 'Volume', animation: 'Animação', transform: 'Transformar',
   mask: 'Máscara', chroma: 'Chroma key', blend: 'Mesclagem', ai: 'Ferramentas de IA', format: 'Formato', background: 'Fundo',
-  export: 'Exportar', keyframes: 'Keyframes', voice: 'Efeitos de voz', stickers: 'Stickers', overlay: 'Sobreposição', record: 'Narração',
+  export: 'Exportar', color: 'Correção de cor', soundtrack: 'Trilha sonora com IA', keyframes: 'Keyframes', voice: 'Efeitos de voz', stickers: 'Stickers', overlay: 'Sobreposição', record: 'Narração',
 };
 
 export default function Panels() {
@@ -33,6 +35,8 @@ export default function Panels() {
       case 'effects': return <EffectsPanel />;
       case 'filters': return <FiltersPanel />;
       case 'adjust': return <AdjustPanel />;
+      case 'color': return <ColorPanel />;
+      case 'soundtrack': return <SoundtrackPanel />;
       case 'transition': return <TransitionPanel />;
       case 'speed': return <SpeedPanel />;
       case 'volume': return <VolumePanel />;

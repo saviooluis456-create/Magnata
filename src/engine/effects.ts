@@ -13,6 +13,7 @@ export interface EffectDef {
 
 export const EFFECT_CATEGORIES = [
   { id: 'trend', name: 'Em alta' },
+  { id: 'camera', name: 'Câmera' },
   { id: 'glitch', name: 'Glitch' },
   { id: 'retro', name: 'Retrô' },
   { id: 'light', name: 'Luz' },
@@ -26,6 +27,108 @@ export const EFFECT_CATEGORIES = [
 ];
 
 export const EFFECTS: EffectDef[] = [
+  // ---------- CAMERA ----------
+  { id: 'cam-zoom-in', name: 'Zoom leve', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float k = clamp(u_time / 5.0, 0.0, 1.0); k = k * k * (3.0 - 2.0 * k);
+  float s = 1.0 + 0.12 * u_amt * k;
+  return texture2D(u_tex, (uv - 0.5) / s + 0.5);
+}` },
+  { id: 'cam-zoom-out', name: 'Afastar leve', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float k = clamp(u_time / 5.0, 0.0, 1.0); k = k * k * (3.0 - 2.0 * k);
+  float s = 1.0 + 0.12 * u_amt * (1.0 - k);
+  return texture2D(u_tex, (uv - 0.5) / s + 0.5);
+}` },
+  { id: 'cam-handheld', name: 'Câmera na mão', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float t = u_time * 0.9;
+  vec2 o = vec2(noise(vec2(t, 1.7)) - 0.5, noise(vec2(3.1, t * 1.1)) - 0.5) * 0.035 * u_amt;
+  float r = (noise(vec2(t * 0.7, 9.0)) - 0.5) * 0.03 * u_amt;
+  vec2 p = uv - 0.5; p.x *= u_res.x / u_res.y;
+  p = mat2(cos(r), -sin(r), sin(r), cos(r)) * p; p.x /= u_res.x / u_res.y;
+  return texture2D(u_tex, p / (1.0 + 0.06 * u_amt) + 0.5 + o);
+}` },
+  { id: 'cam-breathe', name: 'Respiração', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){ float s = 1.0 + 0.035 * u_amt * (0.5 + 0.5 * sin(u_time * 1.3)); return texture2D(u_tex, (uv - 0.5) / s + 0.5); }` },
+  { id: 'cam-drift', name: 'Deriva lateral', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){ float k = clamp(u_time / 6.0, 0.0, 1.0); vec2 o = vec2((k - 0.5) * 0.08 * u_amt, 0.0); return texture2D(u_tex, (uv - 0.5) / (1.0 + 0.1 * u_amt) + 0.5 + o); }` },
+  { id: 'cam-tilt', name: 'Inclinação (dutch)', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float r = sin(u_time * 0.6) * 0.06 * u_amt;
+  vec2 p = uv - 0.5; p.x *= u_res.x / u_res.y; p = mat2(cos(r), -sin(r), sin(r), cos(r)) * p; p.x /= u_res.x / u_res.y;
+  return texture2D(u_tex, p / (1.0 + 0.12 * u_amt) + 0.5);
+}` },
+  { id: 'cam-walk', name: 'Passos', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){ float b = abs(sin(u_time * 3.2)); vec2 o = vec2(sin(u_time * 1.6) * 0.006, b * 0.012) * u_amt; return texture2D(u_tex, (uv - 0.5) / (1.0 + 0.04 * u_amt) + 0.5 + o); }` },
+  { id: 'cam-boat', name: 'Balanço (barco)', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float r = sin(u_time * 0.8) * 0.04 * u_amt; vec2 o = vec2(0.0, sin(u_time * 0.8 + 1.0) * 0.015 * u_amt);
+  vec2 p = uv - 0.5; p.x *= u_res.x / u_res.y; p = mat2(cos(r), -sin(r), sin(r), cos(r)) * p; p.x /= u_res.x / u_res.y;
+  return texture2D(u_tex, p / (1.0 + 0.1 * u_amt) + 0.5 + o);
+}` },
+  { id: 'cam-crash-zoom', name: 'Zoom brusco', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float k = clamp(u_time / 0.25, 0.0, 1.0); k = 1.0 - pow(1.0 - k, 3.0);
+  float s = 1.0 + 0.35 * u_amt * k;
+  vec4 acc = vec4(0.0); float bl = (1.0 - k) * 0.05 * u_amt;
+  for (int i = 0; i < 8; i++) acc += texture2D(u_tex, (uv - 0.5) / (s - bl * float(i)) + 0.5);
+  return acc / 8.0;
+}` },
+  { id: 'cam-impact', name: 'Tremor de impacto', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float d = exp(-u_time * 4.0);
+  vec2 o = vec2(sin(u_time * 61.0), cos(u_time * 47.0)) * 0.03 * u_amt * d;
+  return texture2D(u_tex, (uv - 0.5) / (1.0 + 0.06 * u_amt) + 0.5 + o);
+}` },
+  { id: 'cam-dolly', name: 'Dolly zoom', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float k = clamp(u_time / 4.0, 0.0, 1.0);
+  vec2 p = uv - 0.5; float r = length(p * vec2(u_res.x / u_res.y, 1.0));
+  float zc = 1.0 + 0.25 * u_amt * k; float ze = 1.0 - 0.1 * u_amt * k;
+  float z = mix(zc, ze, smoothstep(0.0, 0.7, r));
+  return texture2D(u_tex, p / z + 0.5);
+}` },
+  { id: 'cam-focus', name: 'Ajuste de foco', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float b = (1.0 - clamp(u_time / 1.2, 0.0, 1.0)) * 0.02 * u_amt;
+  vec4 acc = vec4(0.0);
+  for (int i = 0; i < 12; i++) { float a = float(i) * 2.39996; float d = sqrt(float(i) / 12.0) * b; acc += texture2D(u_tex, uv + vec2(cos(a), sin(a) * u_res.x / u_res.y) * d); }
+  return acc / 12.0;
+}` },
+  { id: 'cam-lens', name: 'Lente vintage', cat: 'camera', glsl: `
+vec4 effect(vec2 uv){
+  vec2 p = uv * 2.0 - 1.0; float r2 = dot(p, p);
+  vec2 q = p * (1.0 + 0.06 * u_amt * r2); vec2 ca = q * 0.006 * u_amt * r2;
+  vec4 c = tex(q * 0.5 + 0.5);
+  c.r = tex((q + ca) * 0.5 + 0.5).r; c.b = tex((q - ca) * 0.5 + 0.5).b;
+  c.rgb *= 1.0 - 0.35 * u_amt * smoothstep(0.4, 1.6, r2);
+  return c;
+}` },
+  { id: 'cam-anamorphic', name: 'Anamórfica', cat: 'camera', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = texture2D(u_tex, uv);
+  vec3 streak = vec3(0.0);
+  for (int i = -6; i <= 6; i++) { vec4 s = texture2D(u_tex, uv + vec2(float(i) * 0.025, 0.0)); streak += s.rgb * smoothstep(0.75, 1.0, luma(s.rgb)); }
+  c.rgb += streak / 13.0 * vec3(0.4, 0.6, 1.0) * 2.0 * u_amt;
+  float b = 0.1 * u_amt;
+  return (uv.y < b || uv.y > 1.0 - b) ? vec4(0.0, 0.0, 0.0, 1.0) : c;
+}` },
+  { id: 'cam-exposure', name: 'Exposição automática', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){ vec4 c = texture2D(u_tex, uv); float e = 1.0 + 0.6 * u_amt * exp(-u_time * 2.5); c.rgb = min(c.rgb * e, vec3(c.a)); return c; }` },
+  { id: 'cam-rec', name: 'Visor REC', cat: 'camera', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = texture2D(u_tex, uv);
+  vec2 asp = vec2(u_res.x / u_res.y, 1.0);
+  vec2 m = abs(uv - 0.5); float frame = 0.0;
+  vec2 cn = abs(m - vec2(0.42, 0.44));
+  if (m.x > 0.4 && m.x < 0.43 && m.y > 0.36 && m.y < 0.45) frame = 1.0;
+  if (m.y > 0.42 && m.y < 0.45 && m.x > 0.33 && m.x < 0.43) frame = 1.0;
+  float dot_ = step(length((uv - vec2(0.12, 0.9)) * asp), 0.015) * step(0.5, fract(u_time));
+  c.rgb = mix(c.rgb, vec3(1.0), frame * u_amt * 0.9);
+  c.rgb = mix(c.rgb, vec3(1.0, 0.1, 0.1), dot_ * u_amt);
+  return c;
+}` },
   // ---------- GLITCH ----------
   { id: 'rgb-split', name: 'RGB Split', cat: 'glitch', animated: true, glsl: `
 vec4 effect(vec2 uv){

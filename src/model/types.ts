@@ -56,6 +56,11 @@ export interface Adjust {
   grain: number;
 }
 
+export type Wheel4 = [number, number, number, number]; // r g b offsets (-1..1) + master
+export interface Wheels { lift: Wheel4; gamma: Wheel4; gain: Wheel4; offset: Wheel4 }
+
+export interface CameraInfo { make: string; model: string; log: string | null; hdr: boolean; profile: string | null }
+
 export interface EffectInst {
   id: string;
   type: string;
@@ -167,6 +172,9 @@ export interface Clip {
   blend: BlendMode;
   adjust: Adjust;
   filter: { id: string; intensity: number } | null;
+  lut: { id: string; intensity: number } | null;
+  wheels: Wheels;
+  camera: CameraInfo | null;
   effects: EffectInst[];
   transition: TransitionInst | null; // transition INTO this clip (main track)
   anims: ClipAnims;
@@ -271,6 +279,7 @@ export interface Project {
   captions: Captions;
   markers: number[];
   media: MediaAsset[];
+  customLuts: { id: string; name: string }[];
   thumb?: string;
 }
 

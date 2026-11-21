@@ -18,8 +18,22 @@ Editor de vídeo para celular, feito como PWA (app web instalável). Tudo roda n
 **Cor e efeitos**
 - 47 filtros cinematográficos com controle de intensidade
 - 14 ajustes de cor (exposição, contraste, realces, sombras, temperatura, vibração, nitidez, vinheta, granulado…)
-- 83 efeitos em GLSL: glitch, VHS, CRT, vazamento de luz, bloom, partículas (neve, chuva, confete, corações), distorções, caleidoscópio, telas divididas, estilos artísticos…
+- 99 efeitos em GLSL: glitch, VHS, CRT, vazamento de luz, bloom, partículas (neve, chuva, confete, corações), distorções, caleidoscópio, telas divididas, estilos artísticos…
 - 51 transições, cada uma com um som associado e 28 efeitos sonoros sintetizados (whoosh, impacto, glitch, riser, shutter…), com volume ajustável
+
+**Correção de cor e câmera**
+- Painel **Cor** dedicado, com abas Câmera, LUTs, Rodas de cor, Ajustes e Filtros
+- Detecção de câmera: lê marca e modelo nos metadados (Apple, Sony, Canon, Panasonic, Fuji, Nikon, DJI, GoPro, Samsung, Xiaomi, Google…), identifica HDR (HLG/PQ) e gravações em LOG/flat pela imagem, aplica o LUT de conversão para Rec.709 e corrige exposição, contraste, saturação e balanço de branco
+- 55 LUTs embutidos: conversões LOG (S-Log3, V-Log, C-Log3, Apple Log, D-Log, F-Log, N-Log, GoPro, HLG), emulações de película (Kodak 2383, Portra, Ektar, Kodachrome, Eterna, Velvia, Cinestill…), looks de cinema, criativos e P&B
+- Importação de LUTs `.cube` do Premiere e do DaVinci
+- Rodas de cor Lift/Gamma/Gain/Offset
+- 16 efeitos de câmera: zoom leve, afastar, câmera na mão, respiração, deriva, inclinação, passos, balanço, zoom brusco, tremor de impacto, dolly zoom, ajuste de foco, lente vintage, anamórfica, exposição automática, visor REC
+
+**Áudio e trilha com IA**
+- Biblioteca com 37 músicas originais em 18 gêneros (lo-fi, trap, house, EDM, cinematográfico, piano emocionante, corporativo, violão, ukulele, ambiente, phonk, funk brasileiro, synthwave, boom bap, rock, reggaeton, suspense, jazz). As músicas são compostas no aparelho na duração do vídeo
+- 73 efeitos sonoros em 9 categorias (transições, impactos, interface, desenho, comédia, natureza, game, terror, musical)
+- **Trilha automática**: a IA analisa cortes, movimento, cores, falas e o tema do texto, escolhe gênero, andamento (para as batidas caírem nos cortes) e tom, e compõe uma música original com curva de energia. Também cria uma faixa de efeitos (whoosh nos cortes, riser e impacto nos picos, pop nos textos) e abaixa a música automaticamente quando há fala
+- As músicas e efeitos são sintetizados, não são gravações de instrumentos reais
 
 **Legendas (inspiradas no Captions)**
 - Legendas automáticas com Whisper rodando no aparelho, com tempo de cada palavra e 10 idiomas

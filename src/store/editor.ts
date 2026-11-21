@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ASPECTS, makeClip, uid } from '../model/defaults';
+import { ASPECTS, defaultWheels, makeClip, uid } from '../model/defaults';
 import { clipEnd, clipsOnTrack, mainClips, maxClipDuration, mediaById, packMain, projectDuration } from '../model/timeline';
 import type { CaptionWord, Clip, MediaAsset, Project, Track, TrackKind } from '../model/types';
 import { db } from './db';
@@ -10,7 +10,7 @@ const HISTORY = 80;
 export type Panel =
   | null | 'media' | 'audio' | 'text' | 'captions' | 'effects' | 'filters' | 'adjust' | 'transition' | 'speed' | 'volume'
   | 'animation' | 'transform' | 'mask' | 'chroma' | 'blend' | 'ai' | 'format' | 'background' | 'export' | 'textEdit'
-  | 'keyframes' | 'voice' | 'stickers' | 'overlay' | 'crop' | 'captionEdit' | 'settings' | 'record';
+  | 'keyframes' | 'voice' | 'color' | 'soundtrack' | 'stickers' | 'overlay' | 'crop' | 'captionEdit' | 'settings' | 'record';
 
 interface EditorState {
   project: Project | null;
@@ -94,6 +94,12 @@ export const useEditor = create<EditorState>((set, get) => ({
     p.tracks = p.tracks?.length ? p.tracks : [{ id: 'main', kind: 'main', name: 'Principal', muted: false, hidden: false, locked: false }];
     p.markers = p.markers ?? [];
     p.media = p.media ?? [];
+    p.customLuts = p.customLuts ?? [];
+    for (const c of p.clips) {
+      c.lut = c.lut ?? null;
+      c.wheels = c.wheels ?? defaultWheels();
+      c.camera = c.camera ?? null;
+    }
     set({ project: p, past: [], future: [], selectedId: null, time: 0, playing: false, panel: null, dirty: false });
   },
   close() {
