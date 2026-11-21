@@ -5,7 +5,6 @@ import { renderMix } from '../engine/audioMix';
 import { emojiFor } from '../engine/keywords';
 
 export const WHISPER_MODELS = [
-  { id: 'onnx-community/whisper-tiny_timestamped', name: 'Rápido (tiny)', size: '~45 MB' },
   { id: 'onnx-community/whisper-base_timestamped', name: 'Equilibrado (base)', size: '~80 MB' },
   { id: 'Xenova/whisper-small', name: 'Preciso (small)', size: '~250 MB' },
 ];
@@ -65,7 +64,17 @@ export async function transcribeProject(p: Project, model: string, language: str
         }
       }
     }
-    return finalizeWords(words);
+    // guard against hallucinations: drop words outside the timeline and collapse repetition loops
+    const inRange = words.filter((w) => w.start < dur + 0.25);
+    const cleaned: CaptionWord[] = [];
+    for (const w of inRange) {
+      const n = cleaned.length;
+      const norm = (x: CaptionWord) => x.text.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+      if (n >= 2 && norm(cleaned[n - 1]) === norm(w) && norm(cleaned[n - 2]) === norm(w)) continue;
+      if (n >= 4 && norm(cleaned[n - 2]) === norm(w) && norm(cleaned[n - 4]) === norm(w) && norm(cleaned[n - 1]) === norm(cleaned[n - 3])) continue;
+      cleaned.push(w);
+    }
+    return finalizeWords(cleaned);
   } finally {
     worker.terminate();
   }

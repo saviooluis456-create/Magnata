@@ -31,7 +31,7 @@ function Generate({ onDone }: { onDone: () => void }) {
   const lang = useEditor((s) => s.project!.captions.language);
   const words = useEditor((s) => s.project!.captions.words.length);
   const enabled = useEditor((s) => s.project!.captions.enabled);
-  const [model, setModel] = useState(WHISPER_MODELS[1].id);
+  const [model, setModel] = useState(WHISPER_MODELS[0].id);
   const [script, setScript] = useState('');
   const abort = useRef<AbortController | null>(null);
   const st = useEditor.getState;

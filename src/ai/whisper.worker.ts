@@ -25,7 +25,9 @@ self.onmessage = async (e: MessageEvent<Req>) => {
       cached = { model, asr };
     }
     post({ type: 'status', msg: 'Transcrevendo…' });
-    const opts: Record<string, unknown> = { chunk_length_s: 30, stride_length_s: 5, return_timestamps: 'word' };
+    // chunking only for long audio (short clips get offset/repetition artifacts when chunked)
+    const opts: Record<string, unknown> = audio.length > 16000 * 29 ? { chunk_length_s: 30, stride_length_s: 5, return_timestamps: 'word' } : { return_timestamps: 'word' };
+    opts.no_repeat_ngram_size = 3;
     if (language) { opts.language = language; opts.task = 'transcribe'; }
     let out: { text: string; chunks?: Chunk[] };
     let wordLevel = true;

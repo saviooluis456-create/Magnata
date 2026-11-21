@@ -4,7 +4,8 @@ import { animatedState } from '../engine/animations';
 import { renderText } from '../engine/textRender';
 import { onFontsChanged } from '../engine/fonts';
 import { clearTextCache } from '../engine/textRender';
-import { ensureUrl } from '../engine/media';
+import { ensureUrl, importBlob, importFile } from '../engine/media';
+import { makeClip } from '../model/defaults';
 import { formatTime, mediaById, projectDuration, visualClipsAt } from '../model/timeline';
 import type { Clip, Project } from '../model/types';
 import { selectedClip, useEditor, type Panel } from '../store/editor';
@@ -452,9 +453,7 @@ async function freezeFrame(clipId: string) {
   cv.width = el.videoWidth; cv.height = el.videoHeight;
   cv.getContext('2d')!.drawImage(el, 0, 0);
   const blob: Blob = await new Promise((r) => cv.toBlob((b) => r(b!), 'image/jpeg', 0.95));
-  const { importBlob } = await import('../engine/media');
   const asset = await importBlob(blob, 'congelado.jpg');
-  const { makeClip } = await import('../model/defaults');
   const t = s.time;
   s.splitAtPlayhead();
   s.edit((d) => {
@@ -504,7 +503,6 @@ async function replaceMedia(clipId: string) {
   const files = await pickFiles('video/*,image/*,audio/*', false);
   if (!files.length) return;
   const s = useEditor.getState();
-  const { importFile } = await import('../engine/media');
   try {
     s.setBusy({ msg: 'Substituindo…' });
     const a = await importFile(files[0]);

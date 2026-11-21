@@ -1,5 +1,5 @@
 /** On-device analysis tools: silence detection, speech regions, beat detection, scene detection, auto-enhance. */
-import { ensureUrl } from '../engine/media';
+import { ensureUrl, loadImage } from '../engine/media';
 import type { Adjust } from '../model/types';
 
 function rmsWindows(buf: AudioBuffer, from: number, to: number, win = 0.02) {
@@ -154,7 +154,6 @@ export async function autoEnhance(mediaId: string, kind: 'video' | 'image', from
     for (let i = 0; i < 5; i++) { await seekTo(v, from + ((to - from) * (i + 0.5)) / 5); ctx.drawImage(v, 0, 0, 96, 96); samples.push(ctx.getImageData(0, 0, 96, 96).data); }
     v.removeAttribute('src'); v.load();
   } else {
-    const { loadImage } = await import('../engine/media');
     const img = await loadImage(mediaId);
     ctx.drawImage(img as CanvasImageSource, 0, 0, 96, 96);
     samples.push(ctx.getImageData(0, 0, 96, 96).data);

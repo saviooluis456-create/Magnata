@@ -1,4 +1,4 @@
-import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
+import { ALL_FORMATS, AudioBufferSink, BlobSource, Input } from 'mediabunny';
 import { uid } from '../model/defaults';
 import type { MediaAsset, MediaKind } from '../model/types';
 import { db } from '../store/db';
@@ -134,7 +134,6 @@ export function decodeAudio(id: string): Promise<AudioBuffer | null> {
 
 async function decodeWithMediabunny(b: Blob): Promise<AudioBuffer | null> {
   try {
-    const { AudioBufferSink } = await import('mediabunny');
     const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(b) });
     const track = await input.getPrimaryAudioTrack();
     if (!track || !(await track.canDecode())) return null;

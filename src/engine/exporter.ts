@@ -4,7 +4,7 @@ import {
 } from 'mediabunny';
 import { mediaById, projectDuration, sourceTime, visualClipsAt } from '../model/timeline';
 import type { Clip, ExportSettings, Project } from '../model/types';
-import { renderMix } from './audioMix';
+import { audioBufferToWav, renderMix } from './audioMix';
 import { Compositor, type FrameImage, type SourceProvider } from './compositor';
 import { preloadFonts } from './fonts';
 import { ensureBlob, ensureUrl, loadImage } from './media';
@@ -281,7 +281,6 @@ export async function exportVideo(p: Project, s: ExportSettings, onProgress: (e:
 
 /** Export just the mixed audio as WAV */
 export async function exportAudioWav(p: Project): Promise<Blob | null> {
-  const { audioBufferToWav } = await import('./audioMix');
   const buf = await renderMix(p, 0, projectDuration(p));
   return buf ? audioBufferToWav(buf) : null;
 }
