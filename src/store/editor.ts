@@ -28,6 +28,8 @@ interface EditorState {
   snap: boolean;
   styleClipboard: Partial<Clip> | null;
   trimToPlayhead(side: 'left' | 'right'): void;
+  /** update a media asset (thumbnails, waveform) without creating an undo step */
+  patchMedia(id: string, patch: Partial<MediaAsset>): void;
   copyStyle(): void;
   pasteStyle(all?: boolean): void;
   zoomToFit(viewWidth: number): void;
@@ -98,6 +100,20 @@ export const useEditor = create<EditorState>((set, get) => ({
   dirty: false,
   snap: true,
   styleClipboard: null,
+
+  patchMedia(id, patch) {
+    const apply = (p: Project | null) => {
+      if (!p) return p;
+      const i = p.media.findIndex((m) => m.id === id);
+      if (i < 0) return p;
+      const media = [...p.media];
+      media[i] = { ...media[i], ...patch };
+      return { ...p, media };
+    };
+    const s = get();
+    set({ project: apply(s.project), past: s.past.map((x) => apply(x)!), future: s.future.map((x) => apply(x)!) });
+    scheduleSave(get);
+  },
 
   trimToPlayhead(side) {
     const { selectedId, time, project } = get();

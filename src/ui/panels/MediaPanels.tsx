@@ -12,6 +12,17 @@ import { Chips, Grid, Icon, PALETTE, Section, Slider, Swatches, Tabs, Tile } fro
 export function MediaPanel() {
   const media = useEditor((s) => s.project!.media);
   const st = useEditor.getState;
+  const [sel, setSel] = useState<string[]>([]);
+  const [filter, setFilter] = useState<'all' | 'video' | 'image' | 'audio'>('all');
+  const toggle = (id: string) => setSel((x) => (x.includes(id) ? x.filter((y) => y !== id) : [...x, id]));
+  const add = (target: 'main' | 'overlay') => {
+    const assets = sel.map((id) => media.find((m) => m.id === id)!).filter(Boolean);
+    const visual = assets.filter((a) => a.kind !== 'audio'), audio = assets.filter((a) => a.kind === 'audio');
+    if (visual.length) st().addMedia(visual, target);
+    if (audio.length) st().addMedia(audio, 'audio');
+    setSel([]);
+  };
+  const shown = media.filter((m) => filter === 'all' || m.kind === filter);
   return (
     <>
       <Grid cols={3}>
@@ -22,15 +33,26 @@ export function MediaPanel() {
         }} />
       </Grid>
       {media.length > 0 && (
-        <Section title="Biblioteca do projeto">
-          <Grid cols={4}>
-            {media.map((m) => (
-              <Tile key={m.id} label={m.name} icon={m.thumb ? <img src={m.thumb} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : <Icon name={m.kind === 'audio' ? 'audio' : 'media'} />}
-                badge={m.kind === 'video' || m.kind === 'audio' ? formatTime(m.duration, false) : undefined}
-                onClick={() => st().addMedia([m], m.kind === 'audio' ? 'audio' : 'main')} />
-            ))}
-          </Grid>
-          <p className="hint">Toque para adicionar novamente à linha do tempo.</p>
+        <Section title="Biblioteca do projeto" right={sel.length ? <button className="btn small ghost" onClick={() => setSel([])}>Limpar ({sel.length})</button> : undefined}>
+          <Chips options={[{ v: 'all', label: 'Tudo' }, { v: 'video', label: 'Vídeos' }, { v: 'image', label: 'Fotos' }, { v: 'audio', label: 'Áudios' }]} value={filter} onChange={setFilter} />
+          <div className="media-grid">
+            {shown.map((m) => {
+              const n = sel.indexOf(m.id);
+              return (
+                <button key={m.id} className={`media-cell ${n >= 0 ? 'on' : ''}`} onClick={() => toggle(m.id)} aria-label={m.name} data-testid={`lib-${m.id}`}>
+                  {m.thumb ? <img src={m.thumb} alt="" /> : <span className="media-ico"><Icon name={m.kind === 'audio' ? 'audio' : 'media'} /></span>}
+                  {(m.kind === 'video' || m.kind === 'audio') && <span className="media-dur">{formatTime(m.duration, false)}</span>}
+                  {n >= 0 && <span className="media-num">{n + 1}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {sel.length > 0 ? (
+            <div className="row" style={{ marginTop: 10 }}>
+              <button className="btn primary" onClick={() => add('main')} data-testid="lib-add">Adicionar ({sel.length})</button>
+              <button className="btn" onClick={() => add('overlay')}>Como sobreposição</button>
+            </div>
+          ) : <p className="hint">Toque para selecionar (a ordem dos números é a ordem na linha do tempo). Os itens entram após o clipe sob o cursor.</p>}
         </Section>
       )}
     </>

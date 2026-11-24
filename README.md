@@ -57,6 +57,11 @@ Editor de vídeo para celular, feito como PWA (app web instalável). Tudo roda n
 - **Texto:** 16 animações letra a letra (subir, pop, cair, girar, decodificar, glitch, neon, onda, arco-íris, brilho…)
 - **Edição:** quadro a quadro, cortar antes/depois do cursor, copiar/colar estilo entre clipes, zoom da linha do tempo, ajustar à tela e ímã liga/desliga
 
+**Novidades da versão 2.1**
+- **Copiar visual:** escolha uma foto de referência (ou outro clipe). O app analisa os tons, o contraste, o split-toning e a saturação em CIE Lab e gera um LUT 3D exclusivo que recria o visual no vídeo, com controle de intensidade. O LUT fica salvo em "Meus LUTs"
+- **Importação até 24× mais rápida:** o clipe entra na linha do tempo em ~0,3 s. As miniaturas (só de quadros-chave, via WebCodecs), a forma de onda (decodificação em streaming) e o salvamento no aparelho ficam em segundo plano, e vários arquivos são importados em paralelo
+- **Biblioteca com seleção múltipla:** escolha vários itens na ordem numerada e adicione ao vídeo ou como sobreposição
+
 **Exportação**
 - 480p, 720p, 1080p, 2K e 4K, a 24, 25, 30, 50 ou 60 fps, com 5 níveis de qualidade
 - Codecs H.264, HEVC, VP9 e AV1, nos formatos MP4, MOV e WebM. Se o aparelho não suportar o codec escolhido, o app troca por outro automaticamente e avisa

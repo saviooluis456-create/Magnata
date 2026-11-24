@@ -277,6 +277,23 @@ export async function importCubeFile(file: File): Promise<{ id: string; name: st
   return { id, name };
 }
 
+/** Bake a generated look into a LUT, persist it as a .cube (so it survives reloads) and return its id. */
+export async function saveGeneratedLut(name: string, fn: (c: [number, number, number]) => [number, number, number]): Promise<{ id: string; name: string }> {
+  const d = bake(fn);
+  const n = d.size;
+  const lines = [`TITLE "${name.replace(/"/g, '')}"`, `LUT_3D_SIZE ${n}`];
+  // .cube order: red fastest, then green, then blue
+  for (let b = 0; b < n; b++) for (let g = 0; g < n; g++) for (let r = 0; r < n; r++) {
+    const o = ((g * n * n) + b * n + r) * 4;
+    lines.push(`${(d.data[o] / 255).toFixed(4)} ${(d.data[o + 1] / 255).toFixed(4)} ${(d.data[o + 2] / 255).toFixed(4)}`);
+  }
+  const id = 'cube:' + Math.random().toString(36).slice(2, 10);
+  await db.putMedia(id, new Blob([lines.join('\n')], { type: 'text/plain' }));
+  cache.set(id, d);
+  customMeta.set(id, name);
+  return { id, name };
+}
+
 /** Apply a LUT to a small thumbnail (for UI previews) */
 const thumbCache = new Map<string, string>();
 export function lutThumb(id: string, src: string | undefined): Promise<string | null> {

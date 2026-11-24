@@ -272,6 +272,7 @@ await step('project persists after reload', async () => {
 await step('color: camera detection + LUT + wheels', async () => {
   await page.evaluate(() => { const s = window.__editor.getState(); s.openPanel(null); s.select(s.project.clips.find((c) => c.trackId === 'main' && c.kind === 'video').id); s.setTime(1); });
   await tool('color');
+  await page.getByRole('tab', { name: 'Câmera' }).click();
   await page.getByTestId('camera-detect').click();
   await page.waitForFunction(() => window.__editor.getState().project.clips.some((c) => c.camera), null, { timeout: 30000 });
   await page.getByRole('tab', { name: 'LUTs' }).click();
@@ -284,6 +285,30 @@ await step('color: camera detection + LUT + wheels', async () => {
   if (c.lut?.id !== 'film-2383' || !c.camera || Math.abs(c.wheels.lift[0]) < 0.05) throw new Error('color failed ' + JSON.stringify({ lut: c.lut, cam: c.camera, w: c.wheels }));
   await shot('11-color');
   await closePanel();
+});
+
+await step('copy the look from a reference image', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.openPanel(null); s.select(s.project.clips.filter((c) => c.trackId === 'main' && c.kind === 'video').sort((a, b) => a.start - b.start)[1].id); s.setTime(7); });
+  await tool('color');
+  await pick(() => page.getByTestId('match-pick').click(), [f('photo.jpg')]);
+  await page.getByTestId('match-ref').waitFor({ timeout: 20000 });
+  await page.getByTestId('match-apply').click();
+  await page.waitForFunction(() => { const s = window.__editor.getState(); return s.project.clips.find((c) => c.id === s.selectedId)?.lut?.id?.startsWith('cube:'); }, null, { timeout: 30000 });
+  await page.waitForTimeout(500);
+  await shot('11b-match');
+  await closePanel();
+});
+
+await step('media library multi-select adds in order', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.openPanel('media'); });
+  const before = await page.evaluate(() => window.__editor.getState().project.clips.filter((c) => c.trackId === 'main').length);
+  const ids = await page.evaluate(() => window.__editor.getState().project.media.filter((m) => m.kind === 'video').map((m) => m.id).slice(0, 2));
+  for (const id of ids.reverse()) await page.getByTestId('lib-' + id).click();
+  await page.getByTestId('lib-add').click();
+  const after = await page.evaluate(() => window.__editor.getState().project.clips.filter((c) => c.trackId === 'main').length);
+  if (after !== before + 2) throw new Error(`expected +2 clips, got ${before} -> ${after}`);
+  await page.evaluate(() => window.__editor.getState().undo());
+  await closePanel().catch(() => {});
 });
 
 await step('AI soundtrack: analyze video and add music + sfx', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { analyzeCamera, type CameraAnalysis } from '../../ai/camera';
-import { LUTS, LUT_CATEGORIES, importCubeFile, lutThumb } from '../../engine/lut';
+import { LUTS, LUT_CATEGORIES, importCubeFile, lutThumb, saveGeneratedLut } from '../../engine/lut';
+import { describe, matchFunction, statsFromFile, statsFromMedia, type LookStats } from '../../ai/colorMatch';
 import { defaultAdjust, defaultWheels } from '../../model/defaults';
 import { mediaById } from '../../model/timeline';
 import type { Adjust, Clip, Wheel4, Wheels } from '../../model/types';
@@ -10,16 +11,17 @@ import { Grid, Section, Slider, Tabs, Tile } from '../components/ui';
 import { upd, useTargetClip } from './hooks';
 import { AdjustPanel, FiltersPanel } from './LookPanels';
 
-type Tab = 'camera' | 'fix' | 'lut' | 'wheels' | 'adjust' | 'filters';
+type Tab = 'match' | 'camera' | 'fix' | 'lut' | 'wheels' | 'adjust' | 'filters';
 
 export function ColorPanel() {
   const c = useTargetClip(true);
-  const [tab, setTab] = useState<Tab>('camera');
+  const [tab, setTab] = useState<Tab>('match');
   if (!c) return <p className="hint">Adicione um clipe primeiro.</p>;
   return (
     <>
-      <Tabs tabs={[{ id: 'camera', label: 'Câmera' }, { id: 'fix', label: 'Correções' }, { id: 'lut', label: 'LUTs' }, { id: 'wheels', label: 'Rodas de cor' }, { id: 'adjust', label: 'Ajustes' }, { id: 'filters', label: 'Filtros' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'match', label: 'Copiar visual' }, { id: 'camera', label: 'Câmera' }, { id: 'fix', label: 'Correções' }, { id: 'lut', label: 'LUTs' }, { id: 'wheels', label: 'Rodas de cor' }, { id: 'adjust', label: 'Ajustes' }, { id: 'filters', label: 'Filtros' }]} value={tab} onChange={setTab} />
       {!useEditor.getState().selectedId && <p className="hint">Corrigindo o clipe sob o cursor.</p>}
+      {tab === 'match' && <MatchTab c={c} />}
       {tab === 'camera' && <CameraTab c={c} />}
       {tab === 'fix' && <FixTab c={c} />}
       {tab === 'lut' && <LutTab c={c} />}
@@ -95,6 +97,89 @@ function LutThumb({ id, src, swatch }: { id: string; src?: string; swatch: strin
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { let on = true; lutThumb(id, src).then((u) => on && setUrl(u)); return () => { on = false; }; }, [id, src]);
   return url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="fx-thumb" style={{ background: `linear-gradient(135deg, ${swatch}, #111)` }} />;
+}
+
+// ------------------------------------------------------------------ copy the look of a reference image
+function MatchTab({ c }: { c: Clip }) {
+  const project = useEditor((s) => s.project!);
+  const [ref, setRef] = useState<{ stats: LookStats; preview: string; name: string } | null>(null);
+  const m = mediaById(project, c.mediaId);
+  const others = project.media.filter((x) => x.kind !== 'audio' && x.thumb && x.id !== c.mediaId);
+  const pickImage = async () => {
+    const files = await pickFiles('image/*', false);
+    if (!files.length) return;
+    const s = useEditor.getState();
+    s.setBusy({ msg: 'Lendo as cores da imagem…' });
+    try { const r = await statsFromFile(files[0]); setRef({ ...r, name: files[0].name.replace(/\.[^.]+$/, '') }); }
+    catch (e) { s.notify('Não foi possível ler a imagem: ' + (e as Error).message, 'error'); }
+    finally { s.setBusy(null); }
+  };
+  const fromMedia = async (id: string) => {
+    const mm = project.media.find((x) => x.id === id)!;
+    const s = useEditor.getState();
+    s.setBusy({ msg: 'Lendo as cores do clipe…' });
+    try { setRef({ stats: await statsFromMedia(mm), preview: mm.thumb!, name: mm.name }); }
+    catch (e) { s.notify((e as Error).message, 'error'); }
+    finally { s.setBusy(null); }
+  };
+  const apply = async (all: boolean) => {
+    if (!ref) return;
+    const s = useEditor.getState();
+    const targets = all ? s.project!.clips.filter((x) => (x.kind === 'video' || x.kind === 'image') && x.mediaId) : [c];
+    if (!targets.length || !targets[0].mediaId) { s.notify('Selecione um clipe de vídeo ou foto', 'error'); return; }
+    try {
+      const made = new Map<string, { id: string; name: string }>();
+      for (let i = 0; i < targets.length; i++) {
+        const t = targets[i];
+        const mm = mediaById(s.project!, t.mediaId)!;
+        if (made.has(mm.id)) continue;
+        s.setBusy({ msg: `Recriando o visual (${i + 1}/${targets.length})…`, progress: i / targets.length });
+        const tgt = await statsFromMedia(mm, t.in, t.in + t.duration * t.speed);
+        made.set(mm.id, await saveGeneratedLut(`Visual · ${ref.name}`, matchFunction(ref.stats, tgt)));
+      }
+      s.edit((d) => {
+        for (const r of made.values()) if (!d.customLuts.find((x) => x.id === r.id)) d.customLuts.push(r);
+        for (const t of d.clips) { const r = t.mediaId ? made.get(t.mediaId) : undefined; if (r && targets.some((x) => x.id === t.id)) t.lut = { id: r.id, intensity: 0.9 }; }
+      });
+      s.notify(`Visual de “${ref.name}” aplicado ${all ? 'em todos os clipes' : 'no clipe'} 🎨`, 'ok');
+    } catch (e) { s.notify('Falha ao recriar o visual: ' + (e as Error).message, 'error'); }
+    finally { s.setBusy(null); }
+  };
+  return (
+    <>
+      <p className="hint">Escolha uma foto com o visual que você quer (um frame de filme, uma foto do Instagram, um print). A IA lê os tons, o contraste, a cor das sombras e dos realces e a saturação, e gera um LUT exclusivo que recria esse visual no seu vídeo.</p>
+      <button className="btn primary block" onClick={pickImage} data-testid="match-pick">🖼 Escolher imagem de referência</button>
+      {others.length > 0 && (
+        <Section title="Ou copie de outro clipe do projeto">
+          <div className="media-grid">
+            {others.slice(0, 12).map((x) => (
+              <button key={x.id} className="media-cell" onClick={() => fromMedia(x.id)} aria-label={`Copiar visual de ${x.name}`}><img src={x.thumb} alt="" /></button>
+            ))}
+          </div>
+        </Section>
+      )}
+      {ref && (
+        <div className="list-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, marginTop: 12 }} data-testid="match-ref">
+          <div className="row" style={{ alignItems: 'flex-start' }}>
+            <img src={ref.preview} alt="" style={{ flex: 'none', width: 96, height: 96, objectFit: 'cover', borderRadius: 10 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ fontSize: 14 }}>{ref.name}</b>
+              {describe(ref.stats).map((d) => <div key={d} className="hint" style={{ margin: 0 }}>• {d}</div>)}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>{ref.stats.palette.map((p) => <span key={p} style={{ flex: 1, height: 22, borderRadius: 6, background: p }} />)}</div>
+          <div className="row">
+            <button className="btn primary" onClick={() => apply(false)} disabled={!m || m.kind === 'audio'} data-testid="match-apply">Aplicar neste clipe</button>
+            <button className="btn" onClick={() => apply(true)}>Aplicar em todos</button>
+          </div>
+        </div>
+      )}
+      {c.lut?.id.startsWith('cube:') && (
+        <Slider label="Intensidade do visual" value={c.lut.intensity} min={0} max={1} step={0.01} format={(v) => `${Math.round(v * 100)}%`} onChange={(v) => upd(c.id, (d) => { if (d.lut) d.lut.intensity = v; }, 'lutm' + c.id)} />
+      )}
+      <p className="hint">O visual fica salvo em LUTs → Meus LUTs para você reutilizar em outros clipes.</p>
+    </>
+  );
 }
 
 // ------------------------------------------------------------------ one-tap corrections

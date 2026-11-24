@@ -178,6 +178,133 @@ async function probeHasAudio(b: Blob): Promise<boolean> {
 
 export interface ImportProgress { (msg: string): void }
 
+// ------------------------------------------------------------------ fast import
+const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+const persisted = new Map<string, Promise<void>>();
+export const persistPending = () => Promise.all(persisted.values());
+
+/** First frame thumbnail with a single seek (fast). */
+async function posterFrame(v: HTMLVideoElement, duration: number): Promise<string | undefined> {
+  await seek(v, Math.min(0.1, duration / 3));
+  try {
+    const c = document.createElement('canvas');
+    c.height = 96; c.width = Math.max(1, Math.round((v.videoWidth / Math.max(1, v.videoHeight)) * 96));
+    c.getContext('2d')!.drawImage(v, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.6);
+  } catch { return undefined; }
+}
+
+/** Filmstrip via WebCodecs: decodes only key frames (no long GOP decoding) → very fast. */
+async function filmstripFast(blob: Blob, duration: number, count: number): Promise<string[] | null> {
+  try {
+    const { CanvasSink, EncodedPacketSink } = await import('mediabunny');
+    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+    const track = await input.getPrimaryVideoTrack();
+    if (!track || !(await track.canDecode())) return null;
+    const h = 96, w = Math.max(16, Math.round((track.displayWidth / Math.max(1, track.displayHeight)) * h));
+    const packets = new EncodedPacketSink(track);
+    const sink = new CanvasSink(track, { width: w, height: h, fit: 'fill', poolSize: 1 });
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const ctx = c.getContext('2d')!;
+    const out: string[] = [];
+    const cache = new Map<number, string>();
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.1 : (duration * (i + 0.5)) / count;
+      const key = await packets.getKeyPacket(t, { metadataOnly: true } as never);
+      const ts = key ? key.timestamp : t;
+      let url = cache.get(ts);
+      if (!url) {
+        const wc = await sink.getCanvas(ts);
+        if (!wc) continue;
+        ctx.drawImage(wc.canvas as CanvasImageSource, 0, 0, w, h);
+        url = c.toDataURL('image/jpeg', 0.6);
+        cache.set(ts, url);
+      }
+      out.push(url);
+    }
+    input.dispose?.();
+    return out.length ? out : null;
+  } catch { return null; }
+}
+
+/** Waveform peaks streamed through WebCodecs (no full decode kept in memory). */
+async function waveformFast(blob: Blob, duration: number): Promise<number[] | null> {
+  try {
+    const { AudioBufferSink } = await import('mediabunny');
+    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+    const track = await input.getPrimaryAudioTrack();
+    if (!track || !(await track.canDecode())) return null;
+    const bins = Math.min(2000, Math.max(100, Math.round(duration * 20)));
+    const acc = new Float32Array(bins);
+    const sink = new AudioBufferSink(track);
+    for await (const wb of sink.buffers()) {
+      const d = wb.buffer.getChannelData(0), sr = wb.buffer.sampleRate;
+      for (let i = 0; i < d.length; i += 32) {
+        const bi = Math.min(bins - 1, Math.floor(((wb.timestamp + i / sr) / Math.max(0.01, duration)) * bins));
+        const v = Math.abs(d[i]);
+        if (v > acc[bi]) acc[bi] = v;
+      }
+    }
+    input.dispose?.();
+    let max = 0; for (const v of acc) max = Math.max(max, v);
+    return Array.from(acc, (v) => (max > 0 ? Math.round((v / max) * 100) / 100 : 0));
+  } catch { return null; }
+}
+
+/**
+ * Fast import: returns as soon as duration/size are known (≈0.1–0.5 s) so the clip appears on the timeline
+ * immediately. Thumbnails, waveform and storage are completed in the background via `onEnrich`.
+ */
+export async function importFileFast(file: File, existing: MediaAsset[], onEnrich: (id: string, patch: Partial<MediaAsset>) => void): Promise<MediaAsset> {
+  const kind = kindOf(file);
+  if (!kind) throw new Error(`Tipo de arquivo não suportado: ${file.name}`);
+  // same file picked again → reuse instantly
+  const key = fileKey(file);
+  const dup = existing.find((m) => (m as MediaAsset & { key?: string }).key === key);
+  if (dup && blobs.has(dup.id)) return dup;
+  const id = uid('m');
+  blobs.set(id, file);
+  const url = urlOf(id)!;
+  const asset: MediaAsset & { key?: string } = { id, key, name: file.name || kind, kind, mime: file.type, size: file.size, duration: 0, width: 0, height: 0, hasAudio: false };
+  if (kind === 'video') {
+    const [meta, hasAudio] = await Promise.all([loadVideoMeta(url), probeHasAudio(file)]);
+    asset.duration = meta.duration; asset.width = meta.width; asset.height = meta.height; asset.hasAudio = hasAudio;
+    asset.thumb = await posterFrame(meta.el, meta.duration);
+    asset.thumbs = asset.thumb ? [asset.thumb] : [];
+    // background enrichment
+    void (async () => {
+      const n = Math.min(14, Math.max(3, Math.ceil(meta.duration / 2)));
+      let strip = await filmstripFast(file, meta.duration, n);
+      if (!strip) strip = await filmstrip(meta.el, meta.duration, n);
+      meta.el.removeAttribute('src'); meta.el.load();
+      if (strip?.length) onEnrich(id, { thumbs: strip, thumb: strip[0] });
+      if (hasAudio) {
+        const wf = await waveformFast(file, meta.duration);
+        if (wf) onEnrich(id, { waveform: wf });
+      }
+    })();
+  } else if (kind === 'image') {
+    const img = await loadImage(id);
+    asset.width = (img as ImageBitmap).width || (img as HTMLImageElement).naturalWidth;
+    asset.height = (img as ImageBitmap).height || (img as HTMLImageElement).naturalHeight;
+    const c = document.createElement('canvas');
+    c.height = 96; c.width = Math.max(1, Math.round((asset.width / Math.max(1, asset.height)) * 96));
+    c.getContext('2d')!.drawImage(img as CanvasImageSource, 0, 0, c.width, c.height);
+    asset.thumb = c.toDataURL('image/jpeg', 0.7);
+    asset.thumbs = [asset.thumb];
+  } else {
+    asset.duration = await loadAudioMeta(url);
+    asset.hasAudio = true;
+    void (async () => {
+      const wf = (await waveformFast(file, asset.duration)) ?? await (async () => { const b = await decodeAudio(id); return b ? peaks(b, Math.min(2000, Math.max(100, Math.round(b.duration * 20)))) : null; })();
+      if (wf) onEnrich(id, { waveform: wf });
+    })();
+  }
+  // persist the original file to on-device storage in the background
+  persisted.set(id, db.putMedia(id, file).then(() => { persisted.delete(id); }).catch(() => { persisted.delete(id); }));
+  return asset;
+}
+
 export async function importFile(file: File, onProgress?: ImportProgress): Promise<MediaAsset> {
   const kind = kindOf(file);
   if (!kind) throw new Error(`Tipo de arquivo não suportado: ${file.name}`);
@@ -192,9 +319,8 @@ export async function importFile(file: File, onProgress?: ImportProgress): Promi
     asset.width = meta.width;
     asset.height = meta.height;
     asset.hasAudio = await probeHasAudio(file);
-    onProgress?.('Gerando miniaturas…');
     const n = Math.min(14, Math.max(3, Math.ceil(meta.duration / 2)));
-    asset.thumbs = await filmstrip(meta.el, meta.duration, n);
+    asset.thumbs = (await filmstripFast(file, meta.duration, n)) ?? await filmstrip(meta.el, meta.duration, n);
     asset.thumb = asset.thumbs[0];
     meta.el.removeAttribute('src');
     meta.el.load();
@@ -213,12 +339,15 @@ export async function importFile(file: File, onProgress?: ImportProgress): Promi
   }
   await db.putMedia(id, file);
   if (asset.hasAudio && file.size < 400 * 1024 * 1024) {
-    onProgress?.('Analisando áudio…');
     try {
-      const buf = await decodeAudio(id);
-      if (buf) {
-        asset.waveform = peaks(buf, Math.min(2000, Math.max(100, Math.round(buf.duration * 20))));
-        if (kind === 'audio' && !asset.duration) asset.duration = buf.duration;
+      const wf = await waveformFast(file, asset.duration);
+      if (wf) asset.waveform = wf;
+      else {
+        const buf = await decodeAudio(id);
+        if (buf) {
+          asset.waveform = peaks(buf, Math.min(2000, Math.max(100, Math.round(buf.duration * 20))));
+          if (kind === 'audio' && !asset.duration) asset.duration = buf.duration;
+        }
       }
     } catch { /* ignore */ }
   }
