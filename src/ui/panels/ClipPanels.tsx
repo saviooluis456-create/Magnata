@@ -10,6 +10,7 @@ import type { AnimProp, BlendMode, Clip, Ease, MaskType } from '../../model/type
 import { useEditor } from '../../store/editor';
 import { Chips, Grid, Section, Slider, Swatches, Tabs, Tile, Toggle } from '../components/ui';
 import { upd, useTargetClip } from './hooks';
+import { VoiceStudio } from './VoiceStudio';
 
 function NoClip() { return <p className="hint">Selecione um clipe na linha do tempo.</p>; }
 
@@ -90,7 +91,10 @@ export function VoicePanel() {
   const a = c.audio;
   return (
     <>
-      <Section title="Aprimorar com IA">
+      <Section title="Estúdio de voz (IA)">
+        <VoiceStudio c={c} />
+      </Section>
+      <Section title="Ajustes rápidos (tempo real)">
         <Toggle label="Melhorar voz" hint="EQ de presença + compressão de estúdio" value={a.enhance} onChange={(v) => upd(c.id, (d) => { d.audio.enhance = v; })} />
         <Toggle label="Reduzir ruído" hint="Remove zumbido, graves e chiado" value={a.denoise} onChange={(v) => upd(c.id, (d) => { d.audio.denoise = v; })} />
       </Section>
@@ -113,7 +117,7 @@ export function AnimationPanel() {
   const c = useTargetClip(false);
   const [tab, setTab] = useState<'in' | 'out' | 'loop'>('in');
   if (!c) return <NoClip />;
-  const list = tab === 'in' ? IN_ANIMS : tab === 'out' ? OUT_ANIMS : LOOP_ANIMS;
+  const list = (tab === 'in' ? IN_ANIMS : tab === 'out' ? OUT_ANIMS : LOOP_ANIMS).filter((a) => !a.text || c.kind === 'text');
   const cur = c.anims[tab];
   const maxD = tab === 'loop' ? 4 : Math.max(0.1, Math.min(5, c.duration * (tab === 'in' ? 0.9 : 0.9)));
   return (

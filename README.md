@@ -47,6 +47,16 @@ Editor de vídeo para celular, feito como PWA (app web instalável). Tudo roda n
 - Remover silêncios, remover fundo (MediaPipe), zoom inteligente no ritmo da fala, cortar por cenas, sincronizar cortes com a batida (detecta o BPM), corrigir cor automaticamente, melhorar a voz e reduzir ruído, reenquadrar
 - 10 efeitos de voz e equalizador de 3 bandas
 
+**Novidades da versão 2**
+- **Legendas:** prévias animadas que usam o texto do seu vídeo, 5 estilos novos (Neon Verde, Milhão, Granada, Corre, Teatro), opção “Aplicar a todas as frases” (ou só à frase atual), Cancelar/Aplicar, destaque que desliza de palavra em palavra, quebra de linha equilibrada, 8 animações novas e modos “Linha inteira” e “Preencher”
+- **Estúdio de voz (IA):** RNNoise (rede neural de supressão de ruído) + redução espectral de ruído residual + remoção de eco + de-esser + EQ de voz + compressão em 2 estágios + normalização de loudness (ITU-R BS.1770) + limitador, com predefinições (Podcast, Rua/vento, Sala com eco, Narração, Redes sociais, Natural), intensidade e prévia de antes/depois
+- **Exportação com volume padrão das redes (−14 LUFS)** e botão **Salvar na galeria** (no iPhone abre “Salvar vídeo” direto para o app Fotos)
+- **Motion graphics:** 28 modelos animados e editáveis (lower thirds, títulos, inscreva-se, @perfil, chamadas, citação, oferta, contador, barra de progresso, contagem, checklist, REC, telas finais)
+- **Cor:** 94 LUTs (novas categorias Criadores e Climas), 70 filtros e 12 correções rápidas de um toque (luz amarela, fluorescente, contraluz, subexposto…)
+- **Efeitos:** 135 no total, incluindo halação, raios de luz, Super 8, VHS rebobinando, blocos glitch, calor, aquarela, risografia, vaga-lumes, pétalas, relâmpago, película 35mm e visor de câmera
+- **Texto:** 16 animações letra a letra (subir, pop, cair, girar, decodificar, glitch, neon, onda, arco-íris, brilho…)
+- **Edição:** quadro a quadro, cortar antes/depois do cursor, copiar/colar estilo entre clipes, zoom da linha do tempo, ajustar à tela e ímã liga/desliga
+
 **Exportação**
 - 480p, 720p, 1080p, 2K e 4K, a 24, 25, 30, 50 ou 60 fps, com 5 níveis de qualidade
 - Codecs H.264, HEVC, VP9 e AV1, nos formatos MP4, MOV e WebM. Se o aparelho não suportar o codec escolhido, o app troca por outro automaticamente e avisa

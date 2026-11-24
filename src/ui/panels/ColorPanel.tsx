@@ -3,14 +3,14 @@ import { analyzeCamera, type CameraAnalysis } from '../../ai/camera';
 import { LUTS, LUT_CATEGORIES, importCubeFile, lutThumb } from '../../engine/lut';
 import { defaultAdjust, defaultWheels } from '../../model/defaults';
 import { mediaById } from '../../model/timeline';
-import type { Clip, Wheel4, Wheels } from '../../model/types';
+import type { Adjust, Clip, Wheel4, Wheels } from '../../model/types';
 import { useEditor } from '../../store/editor';
 import { pickFiles } from '../actions';
 import { Grid, Section, Slider, Tabs, Tile } from '../components/ui';
 import { upd, useTargetClip } from './hooks';
 import { AdjustPanel, FiltersPanel } from './LookPanels';
 
-type Tab = 'camera' | 'lut' | 'wheels' | 'adjust' | 'filters';
+type Tab = 'camera' | 'fix' | 'lut' | 'wheels' | 'adjust' | 'filters';
 
 export function ColorPanel() {
   const c = useTargetClip(true);
@@ -18,9 +18,10 @@ export function ColorPanel() {
   if (!c) return <p className="hint">Adicione um clipe primeiro.</p>;
   return (
     <>
-      <Tabs tabs={[{ id: 'camera', label: 'Câmera' }, { id: 'lut', label: 'LUTs' }, { id: 'wheels', label: 'Rodas de cor' }, { id: 'adjust', label: 'Ajustes' }, { id: 'filters', label: 'Filtros' }]} value={tab} onChange={setTab} />
+      <Tabs tabs={[{ id: 'camera', label: 'Câmera' }, { id: 'fix', label: 'Correções' }, { id: 'lut', label: 'LUTs' }, { id: 'wheels', label: 'Rodas de cor' }, { id: 'adjust', label: 'Ajustes' }, { id: 'filters', label: 'Filtros' }]} value={tab} onChange={setTab} />
       {!useEditor.getState().selectedId && <p className="hint">Corrigindo o clipe sob o cursor.</p>}
       {tab === 'camera' && <CameraTab c={c} />}
+      {tab === 'fix' && <FixTab c={c} />}
       {tab === 'lut' && <LutTab c={c} />}
       {tab === 'wheels' && <WheelsTab c={c} />}
       {tab === 'adjust' && <AdjustPanel />}
@@ -94,6 +95,45 @@ function LutThumb({ id, src, swatch }: { id: string; src?: string; swatch: strin
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => { let on = true; lutThumb(id, src).then((u) => on && setUrl(u)); return () => { on = false; }; }, [id, src]);
   return url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div className="fx-thumb" style={{ background: `linear-gradient(135deg, ${swatch}, #111)` }} />;
+}
+
+// ------------------------------------------------------------------ one-tap corrections
+const FIXES: { id: string; name: string; icon: string; hint: string; adj: Partial<Adjust> }[] = [
+  { id: 'tungsten', name: 'Luz amarela', icon: '💡', hint: 'Lâmpada incandescente / quente demais', adj: { temperature: -38, tint: 4, saturation: -6 } },
+  { id: 'fluor', name: 'Luz fluorescente', icon: '🟩', hint: 'Esverdeado de escritório', adj: { tint: 30, temperature: 6 } },
+  { id: 'shade', name: 'Sombra azulada', icon: '🌥', hint: 'Gravado na sombra / nublado', adj: { temperature: 22, tint: 6, vibrance: 12 } },
+  { id: 'backlight', name: 'Contraluz', icon: '🌅', hint: 'Rosto escuro com fundo claro', adj: { shadows: 45, highlights: -40, exposure: 8, contrast: -8 } },
+  { id: 'under', name: 'Subexposto', icon: '🌑', hint: 'Imagem escura', adj: { exposure: 35, shadows: 25, contrast: 6, vibrance: 8 } },
+  { id: 'over', name: 'Superexposto', icon: '☀️', hint: 'Estourado / claro demais', adj: { exposure: -30, highlights: -45, contrast: 10, saturation: 6 } },
+  { id: 'lowlight', name: 'Pouca luz', icon: '🌙', hint: 'Noite, reduz granulado aparente', adj: { exposure: 25, shadows: 30, saturation: -10, sharpen: -10, grain: 0 } },
+  { id: 'flat', name: 'Sem vida', icon: '🫥', hint: 'Imagem lavada, sem contraste', adj: { contrast: 28, vibrance: 22, saturation: 8, highlights: -10, shadows: -8 } },
+  { id: 'skin', name: 'Pele natural', icon: '🙂', hint: 'Tons de pele mais saudáveis', adj: { temperature: 6, tint: 4, vibrance: 10, saturation: -4, highlights: -8 } },
+  { id: 'sky', name: 'Céu mais azul', icon: '🏞', hint: 'Recupera o céu', adj: { highlights: -35, vibrance: 25, temperature: -6, contrast: 8 } },
+  { id: 'sharp', name: 'Mais nitidez', icon: '🔍', hint: 'Detalhes mais definidos', adj: { sharpen: 45, contrast: 6 } },
+  { id: 'cinematic', name: 'Base cinema', icon: '🎬', hint: 'Contraste suave e preto aveludado', adj: { contrast: 12, fade: 10, saturation: -8, highlights: -15 } },
+];
+
+function FixTab({ c }: { c: Clip }) {
+  const applyAll = () => useEditor.getState().edit((p) => { p.clips.forEach((x) => { if (x.kind === 'video' || x.kind === 'image') x.adjust = { ...c.adjust }; }); });
+  return (
+    <>
+      <p className="hint">Correções de um toque para problemas comuns de gravação. Elas se somam ao que já estiver ajustado — use “Redefinir” na aba Ajustes para recomeçar.</p>
+      <div className="list">
+        {FIXES.map((f) => (
+          <button key={f.id} className="list-item" style={{ textAlign: 'left' }} onClick={() => upd(c.id, (d) => {
+            for (const [k, v] of Object.entries(f.adj) as [keyof Adjust, number][]) d.adjust[k] = Math.max(-100, Math.min(100, (d.adjust[k] ?? 0) + v));
+          })} data-testid={`fix-${f.id}`}>
+            <span style={{ fontSize: 22 }}>{f.icon}</span>
+            <span className="grow"><b style={{ fontSize: 14 }}>{f.name}</b><br /><span className="hint" style={{ margin: 0 }}>{f.hint}</span></span>
+          </button>
+        ))}
+      </div>
+      <div className="row" style={{ marginTop: 10 }}>
+        <button className="btn small ghost" onClick={() => upd(c.id, (d) => { d.adjust = defaultAdjust(); })}>Redefinir ajustes</button>
+        <button className="btn small ghost" onClick={applyAll}>Aplicar a todos os clipes</button>
+      </div>
+    </>
+  );
 }
 
 // ------------------------------------------------------------------ LUTs

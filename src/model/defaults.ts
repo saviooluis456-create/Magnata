@@ -86,6 +86,8 @@ export const defaultCaptionStyle = (): CaptionStyle => ({
   emphItalic: false,
   emphScale: 1,
   emphAuto: false,
+  emphFirst: false,
+  emphGlow: false,
   lowercase: false,
   fitLines: false,
   pauseSplit: 0.7,
@@ -132,7 +134,7 @@ export const defaultCaptionStyle = (): CaptionStyle => ({
   removePunctuation: true,
 });
 
-export const defaultCaptions = (): Captions => ({ enabled: true, words: [], style: defaultCaptionStyle(), language: 'portuguese' });
+export const defaultCaptions = (): Captions => ({ enabled: true, words: [], style: defaultCaptionStyle(), language: 'portuguese', overrides: {} });
 
 export function defaultTracks(): Track[] {
   return [{ id: 'main', kind: 'main', name: 'Principal', muted: false, hidden: false, locked: false }];

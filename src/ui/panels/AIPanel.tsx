@@ -225,7 +225,12 @@ function BeatsTool({ onBack }: { onBack: () => void }) {
   const [every, setEvery] = useState(2);
   const project = useEditor((s) => s.project!);
   const audioClips = project.clips.filter((c) => c.kind === 'audio');
-  const [clipId, setClipId] = useState(audioClips[0]?.id ?? '');
+  // prefer music (longest audio that isn't a voice-studio/recorded voice track)
+  const preferred = [...audioClips].sort((a, b) => {
+    const va = /estúdio|narra|voz/i.test(a.name) ? 1 : 0, vb = /estúdio|narra|voz/i.test(b.name) ? 1 : 0;
+    return va - vb || b.duration - a.duration;
+  })[0];
+  const [clipId, setClipId] = useState(preferred?.id ?? '');
   const detect = async (apply: boolean) => {
     const s = useEditor.getState();
     const c = s.project!.clips.find((x) => x.id === clipId);

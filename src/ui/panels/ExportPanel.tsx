@@ -3,13 +3,17 @@ import { FPS_OPTIONS, QUALITY_OPTIONS, RESOLUTIONS, captionsToSrt, estimateBitra
 import { formatTime, projectDuration } from '../../model/timeline';
 import type { ExportSettings } from '../../model/types';
 import { useEditor } from '../../store/editor';
-import { downloadBlob, session, shareBlob } from '../actions';
+import { canShareFiles, downloadBlob, isIOS, saveToGallery, session, shareBlob } from '../actions';
 import { Chips, Section, Toggle } from '../components/ui';
 
 const KEY = 'magnata.export';
 function loadSettings(): ExportSettings {
-  const d: ExportSettings = { resolution: 1080, fps: 30, quality: 'high', videoCodec: 'avc', container: 'mp4', audioBitrate: 192000, includeAudio: true, range: 'all' };
-  try { return { ...d, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; } catch { return d; }
+  const d: ExportSettings = { resolution: 1080, fps: 30, quality: 'high', videoCodec: 'avc', container: 'mp4', audioBitrate: 192000, includeAudio: true, range: 'all', loudness: -14 };
+  let r = d;
+  try { r = { ...d, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; } catch { /* */ }
+  // the iPhone gallery can't import WebM/VP9/AV1 → force a Photos-compatible combo
+  if (isIOS()) { if (r.container === 'webm') r.container = 'mp4'; if (r.videoCodec === 'vp9' || r.videoCodec === 'av1') r.videoCodec = 'avc'; }
+  return r;
 }
 
 export function ExportPanel() {
@@ -61,7 +65,7 @@ export function ExportPanel() {
     const p = session.player;
     if (!p) return;
     const b = await p.snapshot('image/png');
-    downloadBlob(b, `${project.name}_quadro.png`);
+    await saveToGallery(b, `${project.name}_quadro.png`);
   };
 
   const audio = async () => {
@@ -91,9 +95,14 @@ export function ExportPanel() {
       <div data-testid="export-done">
         <video className="result-video" src={url} controls playsInline />
         <p className="hint">{result.filename} · {(result.blob.size / 1e6).toFixed(1)} MB</p>
+        <button className="btn primary block" style={{ padding: 16, fontSize: 16 }} data-testid="save-gallery"
+          onClick={async () => { const r = await saveToGallery(result.blob, result.filename); if (r === 'downloaded') useEditor.getState().notify('Vídeo baixado — abra a pasta Downloads/Arquivos para salvá-lo na galeria'); }}>
+          📲 Salvar na galeria
+        </button>
+        <p className="hint" style={{ textAlign: 'center' }}>{isIOS() ? 'No menu que abrir, toque em “Salvar vídeo” — ele vai direto para o app Fotos.' : canShareFiles() ? 'No menu que abrir, escolha Galeria/Fotos ou o app para postar.' : 'O vídeo será baixado para a pasta de downloads.'}</p>
         <div className="row">
-          <button className="btn primary" onClick={async () => { if (!(await shareBlob(result.blob, result.filename))) downloadBlob(result.blob, result.filename); }}>Compartilhar</button>
-          <button className="btn" onClick={() => downloadBlob(result.blob, result.filename)} data-testid="download">Baixar</button>
+          <button className="btn" onClick={async () => { if (!(await shareBlob(result.blob, result.filename))) downloadBlob(result.blob, result.filename); }}>Compartilhar</button>
+          <button className="btn" onClick={() => downloadBlob(result.blob, result.filename)} data-testid="download">Baixar arquivo</button>
         </div>
         <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => { setResult(null); URL.revokeObjectURL(url); setUrl(null); }}>Exportar novamente</button>
       </div>
@@ -120,9 +129,12 @@ export function ExportPanel() {
         <Chips options={codecOpts.map((c) => ({ ...c, disabled: codecs ? codecs[c.v] === false : false }))} value={s.videoCodec} onChange={(v) => set('videoCodec', v)} />
       </Section>
       <Section title="Formato">
-        <Chips options={[{ v: 'mp4', label: 'MP4' }, { v: 'mov', label: 'MOV' }, { v: 'webm', label: 'WebM' }]} value={s.container} onChange={(v) => set('container', v as ExportSettings['container'])} />
+        <Chips options={[{ v: 'mp4', label: 'MP4', hint: 'Recomendado' }, { v: 'mov', label: 'MOV', hint: 'iPhone' }, { v: 'webm', label: 'WebM', hint: isIOS() ? 'Não vai p/ Fotos' : 'Web', disabled: isIOS() }]} value={s.container} onChange={(v) => set('container', v as ExportSettings['container'])} />
       </Section>
       <Toggle label="Incluir áudio" value={s.includeAudio} onChange={(v) => set('includeAudio', v)} />
+      {s.includeAudio && (
+        <Toggle label="Volume padrão das redes (−14 LUFS)" hint="Deixa o áudio no mesmo volume do TikTok, Reels e YouTube, sem distorcer" value={!!s.loudness} onChange={(v) => set('loudness', v ? -14 : null)} />
+      )}
       {s.includeAudio && (
         <Chips options={[128000, 192000, 256000, 320000].map((v) => ({ v, label: `${v / 1000} kbps` }))} value={s.audioBitrate} onChange={(v) => set('audioBitrate', v)} />
       )}
