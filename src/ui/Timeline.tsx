@@ -10,6 +10,7 @@ export default function Timeline() {
   const project = useEditor((s) => s.project)!;
   const zoom = useEditor((s) => s.zoom);
   const selectedId = useEditor((s) => s.selectedId);
+  const snap = useEditor((s) => s.snap);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewW, setViewW] = useState(360);
   const programmatic = useRef(false);
@@ -118,6 +119,12 @@ export default function Timeline() {
         </div>
       </div>
       <div className="playhead" />
+      <div className="tl-tools">
+        <button onClick={() => { const s = useEditor.getState(); s.setZoom(s.zoom / 1.5); }} aria-label="Afastar"><Icon name="zoomout" size={16} /></button>
+        <button onClick={() => useEditor.getState().zoomToFit(scrollRef.current?.clientWidth ?? 360)} aria-label="Ajustar à tela" style={{ fontSize: 11, fontWeight: 700 }}>⟷</button>
+        <button onClick={() => { const s = useEditor.getState(); s.setZoom(s.zoom * 1.5); }} aria-label="Aproximar"><Icon name="zoomin" size={16} /></button>
+        <button className={snap ? 'on' : ''} onClick={() => useEditor.setState({ snap: !snap })} aria-label="Ímã" title="Ímã (encaixe)">🧲</button>
+      </div>
     </div>
   );
 }
@@ -243,7 +250,7 @@ const ClipView = memo(function ClipView({ clip, project, zoom, selected, index, 
     }
     if (d.mode === 'move' && selected && !isMain && d.moved) {
       let ns = Math.max(0, d.origStart + dx / s.zoom);
-      const thr = 8 / s.zoom;
+      const thr = s.snap ? 8 / s.zoom : 0;
       const pts = snapPoints();
       const a = snapTime(ns, pts, thr);
       const b = snapTime(ns + clip.duration, pts, thr) - clip.duration;
@@ -311,7 +318,7 @@ const ClipView = memo(function ClipView({ clip, project, zoom, selected, index, 
       )}
       {(clip.kind === 'audio' || (clip.kind === 'video' && !isMain)) && m?.waveform && <Wave media={m} clip={clip} width={width} />}
       <div className="clip-label">
-        {clip.kind === 'text' ? `T  ${clip.text?.text.replace(/\n/g, ' ')}` : clip.kind === 'audio' ? `♪ ${clip.name}` : clip.kind === 'color' ? 'Cor sólida' : ''}
+        {clip.kind === 'motion' ? `✦ ${clip.name}` : clip.kind === 'text' ? `T  ${clip.text?.text.replace(/\n/g, ' ')}` : clip.kind === 'audio' ? `♪ ${clip.name}` : clip.kind === 'color' ? 'Cor sólida' : ''}
       </div>
       {badges.length > 0 && <div className="clip-badges">{badges.map((b) => <span key={b}>{b}</span>)}</div>}
       {selected && (

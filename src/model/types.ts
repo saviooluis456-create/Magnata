@@ -154,7 +154,9 @@ export interface AudioOpts {
   eqHigh: number;
 }
 
-export type ClipKind = 'video' | 'image' | 'audio' | 'text' | 'color';
+export type ClipKind = 'video' | 'image' | 'audio' | 'text' | 'color' | 'motion';
+
+export interface MotionData { template: string; texts: string[]; colors: string[]; font: string }
 
 export interface Clip {
   id: string;
@@ -183,6 +185,7 @@ export interface Clip {
   mask: Mask;
   bgRemove: boolean;
   text: TextStyle | null;
+  motion?: MotionData | null;
   color: string; // for color clips
 }
 
@@ -204,13 +207,16 @@ export interface CaptionWord {
   end: number;
   emoji?: string;
   highlight?: boolean;
+  /** per-phrase style override (key into Captions.overrides) */
+  styleId?: string;
 }
 
 export type CaptionAnim =
   | 'none' | 'pop' | 'bounce' | 'fade' | 'slide-up' | 'typewriter' | 'zoom' | 'shake'
-  | 'blur-in' | 'glitch' | 'wave' | 'drop' | 'flip' | 'stretch' | 'rise';
+  | 'blur-in' | 'glitch' | 'wave' | 'drop' | 'flip' | 'stretch' | 'rise'
+  | 'spring' | 'slam' | 'swing' | 'scramble' | 'letters' | 'roll' | 'spotlight' | 'jelly';
 
-export type CaptionHighlight = 'none' | 'color' | 'box' | 'underline' | 'scale' | 'karaoke' | 'glow' | 'outline' | 'font';
+export type CaptionHighlight = 'none' | 'color' | 'box' | 'underline' | 'scale' | 'karaoke' | 'glow' | 'outline' | 'font' | 'line' | 'fill';
 
 export interface CaptionStyle {
   preset: string;
@@ -221,6 +227,10 @@ export interface CaptionStyle {
   emphScale: number;
   /** pick the most important word of each phrase automatically when none is detected */
   emphAuto: boolean;
+  /** emphasize the first word of each phrase */
+  emphFirst: boolean;
+  /** emphasized words also glow in their color */
+  emphGlow: boolean;
   lowercase: boolean;
   /** scale each line to the same width (stacked poster look) */
   fitLines: boolean;
@@ -274,6 +284,7 @@ export interface Captions {
   words: CaptionWord[];
   style: CaptionStyle;
   language: string;
+  overrides: Record<string, CaptionStyle>;
 }
 
 export interface Project {
@@ -304,4 +315,6 @@ export interface ExportSettings {
   audioBitrate: number;
   includeAudio: boolean;
   range: 'all' | 'selection';
+  /** normalize the final mix to this integrated loudness (LUFS); null = keep the mix as is */
+  loudness?: number | null;
 }

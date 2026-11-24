@@ -186,6 +186,13 @@ function Scrub() {
   );
 }
 
+function step(dir: number) {
+  const s = useEditor.getState();
+  s.setPlaying(false);
+  const fps = s.project?.fps ?? 30;
+  s.setTime(Math.max(0, Math.round((s.time + dir / fps) * fps) / fps));
+}
+
 function Transport({ playing, canUndo, canRedo, compact }: { playing: boolean; canUndo: boolean; canRedo: boolean; compact?: boolean }) {
   const st = useEditor.getState;
   if (compact) {
@@ -203,9 +210,11 @@ function Transport({ playing, canUndo, canRedo, compact }: { playing: boolean; c
     <div className="transport">
       <TimeDisplay />
       <div className="spacer" />
+      <button className="icon-btn step-btn" onClick={() => step(-1)} aria-label="Quadro anterior" title="Quadro anterior">‹</button>
       <button className="play-btn" onClick={() => st().setPlaying(!playing)} aria-label={playing ? 'Pausar' : 'Reproduzir'} data-testid="play">
         <Icon name={playing ? 'pause' : 'play'} size={26} />
       </button>
+      <button className="icon-btn step-btn" onClick={() => step(1)} aria-label="Próximo quadro" title="Próximo quadro">›</button>
       <div className="spacer" />
       <button className="icon-btn" disabled={!canUndo} onClick={() => st().undo()} aria-label="Desfazer" data-testid="undo"><Icon name="undo" /></button>
       <button className="icon-btn" disabled={!canRedo} onClick={() => st().redo()} aria-label="Refazer" data-testid="redo"><Icon name="redo" /></button>
@@ -252,7 +261,7 @@ function Gestures({ project, w, h }: { project: Project; w: number; h: number })
   const start = useRef<{ x: number; y: number; scale: number; rot: number; dist: number; ang: number; mx: number; my: number; moved: boolean; id: string } | null>(null);
   const capRef = useRef<{ y: number; x: number; py: number; px: number } | null>(null);
 
-  const visible = sel && time >= sel.start - 0.01 && time <= sel.start + sel.duration + 0.01 && (sel.kind === 'video' || sel.kind === 'image' || sel.kind === 'text' || sel.kind === 'color');
+  const visible = sel && time >= sel.start - 0.01 && time <= sel.start + sel.duration + 0.01 && (sel.kind === 'video' || sel.kind === 'image' || sel.kind === 'text' || sel.kind === 'color' || sel.kind === 'motion');
   const rect = visible ? layerRect(project, sel!, time, w, h) : null;
 
   const pos = (e: React.PointerEvent) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
@@ -393,6 +402,7 @@ function Toolbar({ panel }: { panel: Panel }) {
       { id: 'filters', label: 'Filtros', icon: 'filters', panel: 'filters' },
       { id: 'ai', label: 'IA', icon: 'ai', panel: 'ai' },
       { id: 'overlay', label: 'Sobrepor', icon: 'overlay', panel: 'overlay' },
+      { id: 'motion', label: 'Gráficos', icon: 'motion', panel: 'motion' },
       { id: 'stickers', label: 'Stickers', icon: 'sticker', panel: 'stickers' },
       { id: 'adjust', label: 'Ajustar', icon: 'adjust', panel: 'adjust' },
       { id: 'format', label: 'Formato', icon: 'format', panel: 'format' },
@@ -406,6 +416,7 @@ function Toolbar({ panel }: { panel: Panel }) {
       { id: 'back', label: '', icon: 'back', action: () => st().select(null) },
       { id: 'split', label: 'Dividir', icon: 'split', action: () => st().splitAtPlayhead() },
       ...(sel.kind === 'text' ? [{ id: 'textEdit', label: 'Editar', icon: 'text', panel: 'textEdit' as Panel }] : []),
+      ...(sel.kind === 'motion' ? [{ id: 'motionEdit', label: 'Editar', icon: 'motion', panel: 'motionEdit' as Panel }] : []),
       ...(sel.kind !== 'text' ? [{ id: 'speed', label: 'Velocidade', icon: 'speed', panel: 'speed' as Panel }] : []),
       ...(hasAudio ? [{ id: 'volume', label: 'Volume', icon: 'volume', panel: 'volume' as Panel }, { id: 'voice', label: 'Voz', icon: 'voice', panel: 'voice' as Panel }] : []),
       ...(sel.kind !== 'audio' ? [
@@ -427,7 +438,13 @@ function Toolbar({ panel }: { panel: Panel }) {
       ...(sel.kind === 'video' ? [{ id: 'freeze', label: 'Congelar', icon: 'freeze', action: () => freezeFrame(sel.id) }] : []),
       ...(sel.kind === 'video' ? [{ id: 'detach', label: 'Extrair áudio', icon: 'detach', action: () => detachAudio(sel.id) }] : []),
       ...(sel.trackId === 'main' && isVisual ? [{ id: 'tooverlay', label: 'Sobrepor', icon: 'overlay', action: () => toOverlay(sel.id) }] : []),
+      { id: 'trimL', label: 'Cortar antes', icon: 'trimL', action: () => st().trimToPlayhead('left') },
+      { id: 'trimR', label: 'Cortar depois', icon: 'trimR', action: () => st().trimToPlayhead('right') },
       { id: 'dup', label: 'Duplicar', icon: 'copy', action: () => st().duplicateSelected() },
+      ...(sel.kind !== 'audio' ? [
+        { id: 'copyStyle', label: 'Copiar estilo', icon: 'brush', action: () => st().copyStyle() },
+        { id: 'pasteStyle', label: 'Colar estilo', icon: 'paste', action: () => st().pasteStyle() },
+      ] : []),
       ...(sel.mediaId ? [{ id: 'replace', label: 'Substituir', icon: 'replace', action: () => replaceMedia(sel.id) }] : []),
       { id: 'del', label: 'Excluir', icon: 'trash', action: () => st().deleteSelected() },
     ];

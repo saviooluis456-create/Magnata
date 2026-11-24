@@ -5,6 +5,7 @@ import {
 import { mediaById, projectDuration, sourceTime, visualClipsAt } from '../model/timeline';
 import type { Clip, ExportSettings, Project } from '../model/types';
 import { audioBufferToWav, renderMix } from './audioMix';
+import { limit, measureLUFS } from '../audio/voice';
 import { Compositor, type FrameImage, type SourceProvider } from './compositor';
 import { preloadFonts } from './fonts';
 import { ensureBlob, ensureUrl, loadImage } from './media';
@@ -148,6 +149,16 @@ export async function exportVideo(p: Project, s: ExportSettings, onProgress: (e:
     onProgress({ phase: 'Mixando áudio…', progress: 0.01 });
     audioBuf = await renderMix(p, from, to, 48000, (f) => onProgress({ phase: 'Mixando áudio…', progress: 0.01 + f * 0.04 }));
     if (signal.aborted) throw new ExportCancelled();
+    if (audioBuf && s.loudness) {
+      onProgress({ phase: 'Ajustando volume (LUFS)…', progress: 0.05 });
+      const chans = Array.from({ length: audioBuf.numberOfChannels }, (_, i) => audioBuf!.getChannelData(i));
+      const l = measureLUFS(chans, audioBuf.sampleRate);
+      if (l > -60) {
+        const g = Math.pow(10, (s.loudness - l) / 20);
+        for (const c of chans) for (let i = 0; i < c.length; i++) c[i] *= g;
+        limit(chans, audioBuf.sampleRate, -1);
+      }
+    }
     if (audioBuf) {
       const aOk = async (c: AudioCodec) => { try { return await canEncodeAudio(c, { numberOfChannels: 2, sampleRate: 48000, bitrate: s.audioBitrate } as never); } catch { return false; } };
       const prefs: AudioCodec[] = container === 'webm' ? ['opus', 'vorbis'] : ['aac', 'opus'];
@@ -164,6 +175,7 @@ export async function exportVideo(p: Project, s: ExportSettings, onProgress: (e:
   // fonts used by text/captions
   const fonts: { family: string; weight: number; italic?: boolean }[] = [];
   p.clips.forEach((c) => c.text && fonts.push({ family: c.text.font, weight: c.text.weight, italic: c.text.italic }));
+  p.clips.forEach((c) => { if (c.motion) [400, 500, 700, 800, 900].forEach((w) => fonts.push({ family: c.motion!.font, weight: w })); });
   if (p.captions.enabled && p.captions.words.length) fonts.push({ family: p.captions.style.font, weight: p.captions.style.weight, italic: p.captions.style.italic });
   await preloadFonts(fonts);
 

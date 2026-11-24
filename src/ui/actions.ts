@@ -93,12 +93,26 @@ export function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+export const isIOS = () => typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+export const canShareFiles = () => {
+  try { return !!(navigator as Navigator & { canShare?: (d: ShareData) => boolean }).canShare?.({ files: [new File([new Blob(['x'], { type: 'video/mp4' })], 'x.mp4', { type: 'video/mp4' })] }); } catch { return false; }
+};
+
+/** Save to the phone gallery (share sheet → "Salvar vídeo") or download as a fallback. */
+export async function saveToGallery(blob: Blob, filename: string): Promise<'shared' | 'downloaded'> {
+  if (await shareBlob(blob, filename)) return 'shared';
+  downloadBlob(blob, filename);
+  return 'downloaded';
+}
+
 export async function shareBlob(blob: Blob, filename: string): Promise<boolean> {
   try {
-    const file = new File([blob], filename, { type: blob.type });
+    const type = blob.type || (filename.endsWith('.mov') ? 'video/quicktime' : filename.endsWith('.webm') ? 'video/webm' : filename.endsWith('.png') ? 'image/png' : 'video/mp4');
+    const file = new File([blob], filename, { type });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+    // share only the file: on iOS this shows "Salvar vídeo/Salvar imagem", which saves straight to the Photos gallery
     if (nav.share && nav.canShare?.({ files: [file] })) {
-      await nav.share({ files: [file], title: filename });
+      await nav.share({ files: [file] });
       return true;
     }
   } catch (e) {

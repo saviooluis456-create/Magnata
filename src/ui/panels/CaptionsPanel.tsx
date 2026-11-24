@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LANGUAGES, WHISPER_MODELS, alignScript, finalizeWords, parseSubtitles, transcribeProject } from '../../ai/transcribe';
-import { CAPTION_CATEGORIES, CAPTION_PRESETS, PREVIEW_IDLE, applyPreset } from '../../engine/captionStyles';
-import { drawCaptions } from '../../engine/textRender';
+import { CAPTION_CATEGORIES, CAPTION_PRESETS, applyPreset } from '../../engine/captionStyles';
+import { buildPages, drawCaptions } from '../../engine/textRender';
+import { subscribeTick } from '../components/ticker';
 import { captionsToSrt } from '../../engine/exporter';
 import { FONTS, onFontsChanged } from '../../engine/fonts';
 import { emojiFor } from '../../engine/keywords';
@@ -111,14 +112,34 @@ function Generate({ onDone }: { onDone: () => void }) {
   );
 }
 
-const SAMPLE: CaptionWord[] = [
-  { id: 's1', text: 'Quick', start: 0.5, end: 0.9 }, { id: 's2', text: 'brown', start: 0.9, end: 1.3 },
-  { id: 's3', text: 'fox', start: 1.3, end: 1.7 }, { id: 's4', text: 'jumped', start: 1.7, end: 2.1, highlight: true },
-];
+const SAMPLE_TEXT = 'Seja bem-vindo à nossa primeira mostra cultural, projeto Baú de Leitura. Isso muda tudo!';
+function sampleWords(): CaptionWord[] {
+  let t = 0.25;
+  return SAMPLE_TEXT.split(' ').map((w, i) => {
+    const d = 0.22 + w.length * 0.035;
+    const word: CaptionWord = { id: 'smp' + i, text: w, start: t, end: t + d, highlight: i === 0 || /cultural|tudo/i.test(w) };
+    t += d + (/[.,!?]$/.test(w) ? 0.25 : 0.04);
+    return word;
+  });
+}
+const SAMPLE = sampleWords();
 
-/** Live preview rendered with the real caption engine (identical to the video output). */
-function CaptionPreview({ style, height: h0 }: { style: CaptionStyle; height?: number }) {
-  const height = h0 ?? (style.fitLines || (style.emphScale ?? 1) > 1.3 || style.wordsPerPage <= 2 ? 200 : 150);
+/** Words used by the previews: the project's own captions (first phrase-ish) or a sample sentence */
+function usePreviewWords(): CaptionWord[] {
+  const words = useEditor((s) => s.project!.captions.words);
+  return useMemo(() => {
+    if (words.length < 3) return SAMPLE;
+    const sorted = [...words].sort((a, b) => a.start - b.start).slice(0, 16);
+    const t0 = sorted[0].start - 0.25;
+    return sorted.map((w) => ({ ...w, styleId: undefined, start: w.start - t0, end: w.end - t0 }));
+  }, [words]);
+}
+
+/** Animated preview rendered with the real caption engine (identical to the video output). */
+function CaptionPreview({ style, height: h0, words: w0, still }: { style: CaptionStyle; height?: number; words?: CaptionWord[]; still?: number }) {
+  const defWords = usePreviewWords();
+  const words = w0 ?? defWords;
+  const height = h0 ?? (style.fitLines || (style.emphScale ?? 1) > 1.3 || style.wordsPerPage <= 2 ? 190 : style.wordsPerPage > 8 ? 190 : 150);
   const ref = useRef<HTMLCanvasElement>(null);
   const [fontTick, setFontTick] = useState(0);
   useEffect(() => { const off = onFontsChanged(() => setFontTick((t) => t + 1)); return () => { off(); }; }, []);
@@ -129,10 +150,20 @@ function CaptionPreview({ style, height: h0 }: { style: CaptionStyle; height?: n
     const W = Math.round((c.clientWidth || 320) * dpr), H = Math.round(height * dpr);
     c.width = W; c.height = H;
     const ctx = c.getContext('2d')!;
-    ctx.clearRect(0, 0, W, H);
-    const st: CaptionStyle = { ...style, x: 0.5, y: 0.5, rotation: 0, showUpcoming: true, animation: 'none', emoji: false, wordsPerPage: Math.max(style.wordsPerPage, 2), ...(PREVIEW_IDLE.has(style.preset) ? { highlight: 'none' as const } : {}) };
-    drawCaptions(ctx, W, H, SAMPLE, st, 0.6, (W / 900) * (style.fitLines ? 0.8 : 1));
-  }, [style, height, fontTick]);
+    const st: CaptionStyle = { ...style, x: 0.5, y: 0.5, rotation: 0, emoji: false };
+    const scale = (W / 900) * (style.fitLines ? 0.8 : 1) * (style.wordsPerPage <= 1 ? 0.85 : 1);
+    const end = (words[words.length - 1]?.end ?? 2) + 0.9;
+    const draw = (t: number) => { ctx.clearRect(0, 0, W, H); drawCaptions(ctx, W, H, words, st, t, scale); };
+    if (still !== undefined) { draw(still); return; }
+    let visible = false;
+    const start = performance.now();
+    const io = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver((es) => { visible = es.some((e) => e.isIntersecting); }) : null;
+    io?.observe(c);
+    if (!io) visible = true;
+    draw(0.6);
+    const off = subscribeTick((now) => { if (visible && !document.hidden) draw(((now - start) / 1000) % end); });
+    return () => { off(); io?.disconnect(); };
+  }, [style, height, fontTick, words, still]);
   return <canvas ref={ref} style={{ width: '100%', height, display: 'block' }} />;
 }
 
@@ -155,8 +186,33 @@ function Models({ onEdit }: { onEdit: () => void }) {
   const [cat, setCat] = useState('featured');
   const [q, setQ] = useState('');
   const [saved, setSaved] = useState(loadSaved);
+  const [allPhrases, setAllPhrases] = useState(true);
   const st = useEditor.getState;
-  const apply = (style: CaptionStyle) => st().edit((d) => { d.captions.style = { ...style, x: d.captions.style.x, y: d.captions.style.y }; d.captions.enabled = true; });
+  const snapshot = useRef(structuredClone(st().project!.captions));
+  const apply = (style: CaptionStyle) => st().edit((d) => {
+    const next = { ...style, x: d.captions.style.x, y: d.captions.style.y };
+    d.captions.enabled = true;
+    if (allPhrases || !d.captions.words.length) {
+      d.captions.style = next;
+      d.captions.words.forEach((w) => { delete w.styleId; });
+      d.captions.overrides = {};
+      return;
+    }
+    // only the phrase under the playhead
+    const pages = buildPages(d.captions.words, Math.max(1, d.captions.style.wordsPerPage), d.captions.style.pauseSplit);
+    const time = st().time;
+    const page = pages.find((p) => time >= p.start && time < p.end) ?? pages.find((p) => p.start >= time) ?? pages[pages.length - 1];
+    if (!page) return;
+    const id = 'ov' + Date.now().toString(36);
+    d.captions.overrides[id] = next;
+    const ids = new Set(page.words.map((w) => w.id));
+    d.captions.words.forEach((w) => { if (ids.has(w.id)) w.styleId = id; });
+    // drop overrides no longer used
+    const used = new Set(d.captions.words.map((w) => w.styleId).filter(Boolean));
+    for (const k of Object.keys(d.captions.overrides)) if (!used.has(k)) delete d.captions.overrides[k];
+  });
+  const cancel = () => { st().edit((d) => { d.captions = structuredClone(snapshot.current); }); st().openPanel(null); };
+  const confirm = () => st().openPanel(null);
   const list: { id: string; name: string; style: CaptionStyle; tag?: string; custom?: boolean }[] =
     cat === 'custom'
       ? saved.map((x) => ({ ...x, custom: true }))
@@ -201,7 +257,17 @@ function Models({ onEdit }: { onEdit: () => void }) {
           );
         })}
       </div>
-      <p className="hint">A prévia usa o mesmo motor do vídeo final. Toque nas bolinhas para trocar as cores, ou no lápis para personalizar.</p>
+      <p className="hint">As prévias usam o texto do seu vídeo e o mesmo motor da exportação. Toque nas cores para trocá-las, ou no lápis para personalizar.</p>
+      <div className="cap-apply-bar">
+        <label className="toggle" style={{ padding: '4px 0' }}>
+          <span>Aplicar a todas as frases<small>{allPhrases ? 'O estilo vale para o vídeo inteiro' : 'Só a frase no cursor recebe o estilo'}</small></span>
+          <input type="checkbox" checked={allPhrases} onChange={(e) => setAllPhrases(e.target.checked)} data-testid="cap-apply-all" /><i />
+        </label>
+        <div className="row">
+          <button className="btn" onClick={cancel} data-testid="cap-cancel">Cancelar</button>
+          <button className="btn primary" onClick={confirm} data-testid="cap-confirm">Aplicar</button>
+        </div>
+      </div>
     </>
   );
 }
@@ -210,10 +276,12 @@ const ANIMS: { v: CaptionAnim; label: string }[] = [
   { v: 'none', label: 'Nenhuma' }, { v: 'pop', label: 'Pop' }, { v: 'bounce', label: 'Quicar' }, { v: 'fade', label: 'Surgir' }, { v: 'slide-up', label: 'Subir' },
   { v: 'typewriter', label: 'Digitar' }, { v: 'zoom', label: 'Zoom' }, { v: 'shake', label: 'Tremer' }, { v: 'blur-in', label: 'Foco' }, { v: 'glitch', label: 'Glitch' },
   { v: 'wave', label: 'Onda' }, { v: 'drop', label: 'Cair' }, { v: 'flip', label: 'Virar' }, { v: 'stretch', label: 'Esticar' }, { v: 'rise', label: 'Elevar' },
+  { v: 'spring', label: 'Mola' }, { v: 'slam', label: 'Impacto' }, { v: 'swing', label: 'Balanço' }, { v: 'scramble', label: 'Decodificar' }, { v: 'letters', label: 'Letra a letra' },
+  { v: 'roll', label: 'Rolar' }, { v: 'spotlight', label: 'Holofote' }, { v: 'jelly', label: 'Gelatina' },
 ];
 const HIGHLIGHTS: { v: CaptionHighlight; label: string }[] = [
   { v: 'none', label: 'Nenhum' }, { v: 'color', label: 'Cor' }, { v: 'box', label: 'Caixa' }, { v: 'underline', label: 'Sublinhado' },
-  { v: 'scale', label: 'Aumentar' }, { v: 'font', label: 'Trocar fonte' }, { v: 'karaoke', label: 'Karaokê' }, { v: 'glow', label: 'Brilho' }, { v: 'outline', label: 'Contorno' },
+  { v: 'scale', label: 'Aumentar' }, { v: 'font', label: 'Trocar fonte' }, { v: 'line', label: 'Linha inteira' }, { v: 'fill', label: 'Preencher' }, { v: 'karaoke', label: 'Karaokê' }, { v: 'glow', label: 'Brilho' }, { v: 'outline', label: 'Contorno' },
 ];
 
 function Custom({ tab }: { tab: Exclude<Tab, 'models' | 'edit' | 'generate'> }) {

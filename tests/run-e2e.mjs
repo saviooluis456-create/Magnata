@@ -173,7 +173,59 @@ await step('captions from script + preset', async () => {
   await closePanel();
 });
 
+await step('captions: per-phrase style + cancel restores', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.setTime(0.5); s.openPanel('captions'); });
+  await page.getByRole('tab', { name: 'Modelos' }).click();
+  await page.getByTestId('cap-apply-all').uncheck({ force: true });
+  await page.getByRole('button', { name: 'Aplicar Corre' }).click();
+  const st1 = await page.evaluate(() => { const c = window.__editor.getState().project.captions; return { ov: Object.keys(c.overrides).length, tagged: c.words.filter((w) => w.styleId).length, total: c.words.length }; });
+  if (st1.ov !== 1 || st1.tagged < 1 || st1.tagged >= st1.total) throw new Error('per-phrase failed ' + JSON.stringify(st1));
+  await page.getByTestId('cap-cancel').click();
+  const st2 = await page.evaluate(() => Object.keys(window.__editor.getState().project.captions.overrides).length);
+  if (st2 !== 0) throw new Error('cancel did not restore');
+});
+
+await step('motion graphics: insert lower third and edit text', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.setTime(0.5); s.openPanel('motion'); });
+  await page.getByTestId('motion-lt-clean').click();
+  await page.getByTestId('motion-text-0').fill('Magnata Teste');
+  const m = await page.evaluate(() => window.__editor.getState().project.clips.find((c) => c.kind === 'motion')?.motion);
+  if (!m || m.texts[0] !== 'Magnata Teste') throw new Error('motion failed ' + JSON.stringify(m));
+  await page.evaluate(() => window.__editor.getState().setTime(2));
+  await page.waitForTimeout(400);
+  await shot('06b-motion');
+  await closePanel();
+});
+
+await step('voice studio: enhance clip audio', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.openPanel(null); const c = s.project.clips.filter((x) => x.trackId === 'main' && x.kind === 'video').sort((a, b) => a.start - b.start)[0]; s.select(c.id); });
+  await tool('voice');
+  await page.getByTestId('voice-apply').click();
+  await page.waitForFunction(() => window.__editor.getState().project.clips.some((c) => c.kind === 'audio' && c.name.includes('estúdio')), null, { timeout: 120000 });
+  const muted = await page.evaluate(() => window.__editor.getState().project.clips.filter((x) => x.trackId === 'main').sort((a, b) => a.start - b.start)[0].audio.muted);
+  if (!muted) throw new Error('original audio not muted');
+  await closePanel();
+});
+
+await step('editing: trim to playhead + copy/paste style + frame step', async () => {
+  const id = await page.evaluate(() => { const s = window.__editor.getState(); const c = s.project.clips.filter((x) => x.trackId === 'main').sort((a, b) => a.start - b.start)[1]; s.select(c.id); s.setTime(c.start + c.duration - 0.5); return c.id; });
+  const before = await page.evaluate((id) => window.__editor.getState().project.clips.find((c) => c.id === id).duration, id);
+  await tool('trimR');
+  const after = await page.evaluate((id) => window.__editor.getState().project.clips.find((c) => c.id === id).duration, id);
+  if (!(after < before - 0.3)) throw new Error(`trim failed ${before} -> ${after}`);
+  await page.getByTestId('undo').click();
+  await tool('copyStyle');
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(s.project.clips.filter((x) => x.trackId === 'main').sort((a, b) => a.start - b.start)[0].id); });
+  await tool('pasteStyle');
+  const t0 = await page.evaluate(() => window.__editor.getState().time);
+  await page.getByRole('button', { name: 'Próximo quadro' }).click();
+  const t1 = await page.evaluate(() => window.__editor.getState().time);
+  if (!(t1 > t0)) throw new Error('frame step failed');
+  await page.evaluate(() => window.__editor.getState().select(null));
+});
+
 await step('import music to audio track', async () => {
+  await page.evaluate(() => { const s = window.__editor.getState(); s.select(null); s.setTime(0); });
   await tool('audio');
   await page.getByRole('tab', { name: 'Meus áudios' }).click();
   await pick(() => page.getByRole('button', { name: 'Importar áudio' }).click(), [f('music.mp3')]);
@@ -263,7 +315,7 @@ await step('export 720p MP4', async () => {
   await page.getByTestId('start-export').click();
   await page.getByTestId('export-done').waitFor({ timeout: 240000 });
   await shot('09-exported');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('download').click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('save-gallery').click()]);
   exported = path.join(out, dl.suggestedFilename());
   await dl.saveAs(exported);
   const probe = JSON.parse(execSync(`ffprobe -v error -show_streams -show_format -of json "${exported}"`).toString());

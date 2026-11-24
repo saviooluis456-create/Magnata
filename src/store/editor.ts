@@ -3,6 +3,7 @@ import { ASPECTS, defaultCaptionStyle, defaultWheels, makeClip, uid } from '../m
 import { clipEnd, clipsOnTrack, mainClips, maxClipDuration, mediaById, packMain, projectDuration } from '../model/timeline';
 import type { CaptionWord, Clip, MediaAsset, Project, Track, TrackKind } from '../model/types';
 import { db } from './db';
+import { MOTION_MAP, defaultMotion } from '../engine/motion';
 
 const clone = <T,>(v: T): T => structuredClone(v);
 const HISTORY = 80;
@@ -10,7 +11,7 @@ const HISTORY = 80;
 export type Panel =
   | null | 'media' | 'audio' | 'text' | 'captions' | 'effects' | 'filters' | 'adjust' | 'transition' | 'speed' | 'volume'
   | 'animation' | 'transform' | 'mask' | 'chroma' | 'blend' | 'ai' | 'format' | 'background' | 'export' | 'textEdit'
-  | 'keyframes' | 'voice' | 'color' | 'soundtrack' | 'stickers' | 'overlay' | 'crop' | 'captionEdit' | 'settings' | 'record';
+  | 'keyframes' | 'voice' | 'color' | 'soundtrack' | 'motion' | 'motionEdit' | 'stickers' | 'overlay' | 'crop' | 'captionEdit' | 'settings' | 'record';
 
 interface EditorState {
   project: Project | null;
@@ -24,6 +25,12 @@ interface EditorState {
   toast: { msg: string; kind: 'info' | 'error' | 'ok'; id: number } | null;
   busy: { msg: string; progress?: number } | null;
   dirty: boolean;
+  snap: boolean;
+  styleClipboard: Partial<Clip> | null;
+  trimToPlayhead(side: 'left' | 'right'): void;
+  copyStyle(): void;
+  pasteStyle(all?: boolean): void;
+  zoomToFit(viewWidth: number): void;
 
   load(p: Project): void;
   close(): void;
@@ -41,6 +48,7 @@ interface EditorState {
 
   addMedia(assets: MediaAsset[], target: 'main' | 'overlay' | 'audio'): void;
   addText(text?: string, preset?: Partial<Clip>): void;
+  addMotion(template: string): void;
   splitAtPlayhead(): void;
   deleteSelected(): void;
   duplicateSelected(): void;
@@ -88,6 +96,54 @@ export const useEditor = create<EditorState>((set, get) => ({
   toast: null,
   busy: null,
   dirty: false,
+  snap: true,
+  styleClipboard: null,
+
+  trimToPlayhead(side) {
+    const { selectedId, time, project } = get();
+    const c = project?.clips.find((x) => x.id === selectedId);
+    if (!c) return;
+    if (time <= c.start + 0.05 || time >= c.start + c.duration - 0.05) { get().notify('Posicione o cursor dentro do clipe'); return; }
+    const cut = time - c.start;
+    get().edit((p) => {
+      const d = p.clips.find((x) => x.id === c.id)!;
+      const media = d.kind === 'video' || d.kind === 'audio';
+      if (side === 'left') {
+        if (media) d.in += cut * d.speed;
+        if (d.trackId !== 'main') d.start += cut;
+        d.duration -= cut;
+        for (const k of Object.keys(d.keyframes) as (keyof Clip['keyframes'])[]) d.keyframes[k] = d.keyframes[k]!.map((f) => ({ ...f, t: f.t - cut })).filter((f) => f.t >= -0.001);
+        d.transition = d.trackId === 'main' ? d.transition : null;
+      } else {
+        d.duration = cut;
+      }
+    });
+    if (side === 'left' && c.trackId === 'main') get().setTime(c.start);
+  },
+  copyStyle() {
+    const { selectedId, project } = get();
+    const c = project?.clips.find((x) => x.id === selectedId);
+    if (!c) return;
+    set({ styleClipboard: structuredClone({ effects: c.effects, filter: c.filter, lut: c.lut, adjust: c.adjust, wheels: c.wheels, anims: c.anims, blend: c.blend, mask: c.mask, chroma: c.chroma }) });
+    get().notify('Estilo copiado: efeitos, cor, animações e máscara', 'ok');
+  },
+  pasteStyle(all = false) {
+    const { selectedId, styleClipboard } = get();
+    if (!styleClipboard) { get().notify('Copie o estilo de um clipe primeiro'); return; }
+    get().edit((p) => {
+      for (const c of p.clips) {
+        if (!(all ? c.kind === 'video' || c.kind === 'image' : c.id === selectedId)) continue;
+        Object.assign(c, structuredClone(styleClipboard), { effects: (styleClipboard.effects ?? []).map((e) => ({ ...e, id: uid('e') })) });
+      }
+    });
+    get().notify(all ? 'Estilo colado em todos os clipes' : 'Estilo colado', 'ok');
+  },
+  zoomToFit(viewWidth) {
+    const p = get().project;
+    if (!p) return;
+    const d = projectDuration(p);
+    set({ zoom: Math.max(8, Math.min(600, d > 0 ? (viewWidth * 0.85) / d : 60)) });
+  },
 
   load(p) {
     // migrate older/partial data defensively
@@ -96,6 +152,8 @@ export const useEditor = create<EditorState>((set, get) => ({
     p.media = p.media ?? [];
     p.customLuts = p.customLuts ?? [];
     p.captions.style = { ...defaultCaptionStyle(), ...p.captions.style };
+    p.captions.overrides = p.captions.overrides ?? {};
+    for (const k of Object.keys(p.captions.overrides)) p.captions.overrides[k] = { ...defaultCaptionStyle(), ...p.captions.overrides[k] };
     for (const c of p.clips) {
       c.lut = c.lut ?? null;
       c.wheels = c.wheels ?? defaultWheels();
@@ -199,6 +257,20 @@ export const useEditor = create<EditorState>((set, get) => ({
       }
     });
     if (firstId) set({ selectedId: firstId });
+  },
+
+  addMotion(template) {
+    const t0 = get().time;
+    const tpl = MOTION_MAP.get(template);
+    if (!tpl) return;
+    let id = '';
+    get().edit((p) => {
+      const trackId = freeTrack(p, 'text', t0, tpl.duration);
+      const c = makeClip('motion', trackId, { start: t0, duration: tpl.duration, name: tpl.name, motion: defaultMotion(template) });
+      p.clips.push(c);
+      id = c.id;
+    });
+    set({ selectedId: id, panel: 'motionEdit' });
   },
 
   addText(text = 'Seu texto', preset) {

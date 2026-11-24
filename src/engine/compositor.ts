@@ -4,6 +4,7 @@ import { animatedState } from './animations';
 import { EFFECT_MAP } from './effects';
 import { LOOK_MAP } from './filters';
 import { getLut } from './lut';
+import { drawMotion } from './motion';
 import { FBO, GLSL_COMMON, Program, VS_FS, VS_QUAD, createTexture, hexToRgb, mat3, type GL } from './gl';
 import { drawCaptions, makeCanvas, renderText } from './textRender';
 import { TRANSITION_MAP } from './transitions';
@@ -263,6 +264,7 @@ export class Compositor {
   private frameNo = 0;
   private dummy!: WebGLTexture;
   private lutTex = new Map<string, WebGLTexture>();
+  private motionCanvases = new Map<string, HTMLCanvasElement | OffscreenCanvas>();
   lost = false;
   onLost?: () => void;
   onRestored?: () => void;
@@ -433,7 +435,7 @@ export class Compositor {
     const tf = c.transform;
     const cw = srcW * (1 - tf.cropL - tf.cropR);
     const ch = srcH * (1 - tf.cropT - tf.cropB);
-    const fit = fitOverride ?? (c.kind === 'text' ? 'none' : c.fit);
+    const fit = fitOverride ?? (c.kind === 'text' || c.kind === 'motion' ? 'none' : c.fit);
     let w: number, h: number;
     if (fit === 'none') { w = cw; h = ch; }
     else if (fit === 'fill') { w = PW; h = PH; }
@@ -455,11 +457,19 @@ export class Compositor {
 
   private frameFor(provider: SourceProvider, project: Project, c: Clip, t: number): { entry: TexEntry; key: string; text?: boolean } | null {
     if (c.kind === 'color') return null;
+    if (c.kind === 'motion' && c.motion) {
+      // motion graphics are drawn per frame on a full-frame canvas at output resolution
+      let cv = this.motionCanvases.get(c.id);
+      if (!cv || cv.width !== this.W || cv.height !== this.H) { cv = makeCanvas(this.W, this.H); this.motionCanvases.set(c.id, cv); }
+      drawMotion(cv.getContext('2d') as CanvasRenderingContext2D, this.W, this.H, c.motion, t - c.start, c.duration);
+      const e = this.upload('mo:' + c.id, { img: cv as TexImageSource, w: project.width, h: project.height, version: undefined });
+      return e ? { entry: e, key: 'mo:' + c.id, text: true } : null;
+    }
     if (c.kind === 'text' && c.text) {
       const st = animatedState(c, t);
       const outScale = this.W / project.width;
       const ref = Math.min(project.width, project.height) / 1080;
-      const r = renderText(c.text, outScale * ref, st.reveal);
+      const r = renderText(c.text, outScale * ref, st.reveal, st.chars);
       const e = this.upload('t:' + c.id, { img: r.canvas as TexImageSource, w: r.w / outScale, h: r.h / outScale, version: r });
       return e ? { entry: e, key: 't:' + c.id, text: true } : null;
     }
@@ -663,7 +673,7 @@ export class Compositor {
       const ctx = this.capCanvas.getContext('2d') as CanvasRenderingContext2D;
       ctx.clearRect(0, 0, this.W, this.H);
       const scale = (this.W / project.width) * (Math.min(project.width, project.height) / 1080);
-      drawCaptions(ctx, this.W, this.H, cap.words, cap.style, t, scale);
+      drawCaptions(ctx, this.W, this.H, cap.words, cap.style, t, scale, cap.overrides);
       const e = this.upload('captions', { img: this.capCanvas as TexImageSource, w: this.W, h: this.H, version: undefined });
       if (e) {
         const lay = this.fbos.layA;

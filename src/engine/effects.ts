@@ -842,6 +842,309 @@ vec4 effect(vec2 uv){
   }
   return acc / 2.04;
 }` },
+
+  // ---------- EXPANSION PACK ----------
+  { id: 'halation', name: 'Halação (filme)', cat: 'light', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec3 acc = vec3(0.0);
+  for (int i = 0; i < 12; i++) { float a = float(i) * 0.5236; for (int r = 1; r <= 2; r++) { vec4 s = tex(uv + vec2(cos(a), sin(a) * u_res.x / u_res.y) * float(r) * 0.006); acc += s.rgb * smoothstep(0.65, 1.0, luma(s.rgb)); } }
+  acc /= 24.0;
+  c.rgb += acc * vec3(1.0, 0.35, 0.15) * 2.2 * u_amt;
+  return c;
+}` },
+  { id: 'god-rays', name: 'Raios de luz', cat: 'light', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  vec2 src = vec2(0.5 + 0.2 * sin(u_time * 0.3), 0.95);
+  vec2 dlt = (uv - src) / 24.0; vec2 p = uv; float acc = 0.0, w = 1.0;
+  for (int i = 0; i < 24; i++) { p -= dlt; acc += smoothstep(0.6, 1.0, luma(tex(p).rgb)) * w; w *= 0.95; }
+  c.rgb += vec3(1.0, 0.92, 0.75) * acc / 12.0 * u_amt * c.a;
+  return c;
+}` },
+  { id: 'shine-sweep', name: 'Brilho deslizante', cat: 'light', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  float x = fract(u_time * 0.5) * 2.4 - 0.7;
+  float band = exp(-pow((uv.x + uv.y * 0.6 - x) * 9.0, 2.0));
+  c.rgb += vec3(band) * 0.55 * u_amt * c.a;
+  return c;
+}` },
+  { id: 'aurora', name: 'Aurora', cat: 'light', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  float n = noise(vec2(uv.x * 3.0 + u_time * 0.2, u_time * 0.1)) ;
+  float band = smoothstep(0.35, 0.0, abs(uv.y - 0.75 - (n - 0.5) * 0.3));
+  vec3 col = mix(vec3(0.1, 1.0, 0.6), vec3(0.6, 0.3, 1.0), uv.x + 0.3 * sin(u_time * 0.4));
+  c.rgb += col * band * 0.6 * u_amt * c.a;
+  return c;
+}` },
+  { id: 'super8', name: 'Super 8', cat: 'retro', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float t = floor(u_time * 18.0);
+  vec2 p = uv + vec2((rand(vec2(t, 2.0)) - 0.5) * 0.006, (rand(vec2(t, 5.0)) - 0.5) * 0.01) * u_amt;
+  vec4 c = tex(p);
+  vec3 col = c.rgb / max(c.a, 0.001);
+  col = mix(col, vec3(col.r * 1.1 + 0.05, col.g * 1.0 + 0.02, col.b * 0.8), u_amt);
+  col += (rand(uv * 4.0 + t) - 0.5) * 0.12 * u_amt;
+  vec2 v = uv - 0.5; col *= 1.0 - dot(v * vec2(1.0, 1.3), v * vec2(1.0, 1.3)) * 1.8 * u_amt;
+  col *= 1.0 - 0.1 * u_amt * step(0.9, rand(vec2(t, 9.0)));
+  return vec4(col * c.a, c.a);
+}` },
+  { id: 'vhs-rewind', name: 'VHS rebobinando', cat: 'retro', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float band = step(0.8, fract(uv.y * 3.0 - u_time * 2.0));
+  vec2 p = uv + vec2(band * 0.05 * u_amt * sin(u_time * 30.0 + uv.y * 80.0), 0.0);
+  vec4 c = tex(p);
+  c.rgb += band * u_amt * 0.25 * c.a;
+  c.r = tex(p + vec2(0.006 * u_amt, 0.0)).r;
+  return c;
+}` },
+  { id: 'color-bleed', name: 'Sangria de cor', cat: 'retro', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec3 acc = vec3(0.0);
+  for (int i = 0; i < 8; i++) acc += tex(uv - vec2(float(i) * 0.003 * u_amt, 0.0)).rgb;
+  acc /= 8.0;
+  float l = luma(c.rgb);
+  vec3 col = vec3(l) + (acc - vec3(luma(acc))) * 1.2;
+  return vec4(mix(c.rgb, col, u_amt), c.a);
+}` },
+  { id: 'block-glitch', name: 'Blocos glitch', cat: 'glitch', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float t = floor(u_time * 10.0);
+  vec2 cell = floor(uv * vec2(8.0, 14.0));
+  float r = rand(cell + t);
+  vec2 off = step(1.0 - 0.25 * u_amt, r) * (vec2(rand(cell * 1.3 + t), rand(cell * 1.7 + t)) - 0.5) * 0.15;
+  vec4 c = tex(uv + off);
+  if (r > 1.0 - 0.06 * u_amt) c.rgb = c.rgb.brg;
+  return c;
+}` },
+  { id: 'bad-signal', name: 'Sinal ruim', cat: 'glitch', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float roll = fract(u_time * 0.3) * step(0.7, rand(vec2(floor(u_time * 2.0), 3.0))) * u_amt;
+  vec2 p = vec2(uv.x + sin(uv.y * 200.0 + u_time * 40.0) * 0.003 * u_amt, fract(uv.y + roll));
+  vec4 c = tex(p);
+  float n = rand(uv * u_res + fract(u_time) * 500.0);
+  c.rgb = mix(c.rgb, vec3(n) * c.a, 0.25 * u_amt);
+  c.rgb *= 0.9 + 0.1 * sin(uv.y * u_res.y * 2.0);
+  return c;
+}` },
+  { id: 'channel-v', name: 'Deslocar canais', cat: 'glitch', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float o = u_amt * 0.02 * sin(u_time * 4.0);
+  return vec4(tex(uv + vec2(0.0, o)).r, tex(uv).g, tex(uv - vec2(0.0, o)).b, tex(uv).a);
+}` },
+  { id: 'heat-haze', name: 'Calor', cat: 'distort', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec2 o = vec2(noise(vec2(uv.x * 20.0, uv.y * 10.0 - u_time * 3.0)) - 0.5, noise(vec2(uv.y * 18.0 + u_time, uv.x * 9.0)) - 0.5) * 0.012 * u_amt;
+  return tex(uv + o);
+}` },
+  { id: 'water-surface', name: 'Superfície da água', cat: 'distort', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec2 p = uv + vec2(sin(uv.y * 30.0 + u_time * 2.0) * 0.006, cos(uv.x * 25.0 + u_time * 1.6) * 0.006) * u_amt;
+  vec4 c = tex(p);
+  c.rgb += pow(max(0.0, sin((uv.x + uv.y) * 40.0 + u_time * 3.0)), 20.0) * 0.15 * u_amt * c.a;
+  return c;
+}` },
+  { id: 'hex-mosaic', name: 'Mosaico hexagonal', cat: 'art', glsl: `
+vec4 effect(vec2 uv){
+  float sz = mix(0.004, 0.04, u_amt);
+  vec2 p = uv * vec2(u_res.x / u_res.y, 1.0) / sz;
+  vec2 r = vec2(1.0, 1.732); vec2 h = r * 0.5;
+  vec2 a = mod(p, r) - h; vec2 b = mod(p - h, r) - h;
+  vec2 g = dot(a, a) < dot(b, b) ? p - a : p - b;
+  return texture2D(u_tex, g * sz / vec2(u_res.x / u_res.y, 1.0));
+}` },
+  { id: 'glass-tiles', name: 'Vidro canelado', cat: 'distort', glsl: `
+vec4 effect(vec2 uv){
+  float n = mix(10.0, 40.0, 1.0 - u_amt);
+  float f = fract(uv.x * n);
+  vec2 p = uv + vec2((f - 0.5) * 0.04 * u_amt, 0.0);
+  vec4 c = tex(p);
+  c.rgb += (0.5 - abs(f - 0.5)) * 0.1 * u_amt * c.a;
+  return c;
+}` },
+  { id: 'pixel-stretch', name: 'Pixel esticado', cat: 'distort', glsl: `
+vec4 effect(vec2 uv){
+  float edge = 0.5 + 0.3 * (u_amt - 0.5);
+  vec2 p = uv; if (uv.x > edge) p.x = edge;
+  return tex(p);
+}` },
+  { id: 'watercolor', name: 'Aquarela', cat: 'art', glsl: `
+vec4 effect(vec2 uv){
+  vec2 o = (vec2(noise(uv * 30.0), noise(uv * 30.0 + 7.0)) - 0.5) * 0.01 * u_amt;
+  vec4 acc = vec4(0.0);
+  for (int i = 0; i < 8; i++) { float a = float(i) * 0.785; acc += tex(uv + o + vec2(cos(a), sin(a)) * 0.004 * u_amt); }
+  acc /= 8.0;
+  vec3 col = floor(acc.rgb * 7.0 + 0.5) / 7.0;
+  col = mix(col, vec3(1.0), 0.12 * noise(uv * 80.0) * u_amt);
+  return vec4(mix(tex(uv).rgb, col * acc.a, u_amt), acc.a);
+}` },
+  { id: 'crosshatch', name: 'Hachura', cat: 'art', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); float l = luma(c.rgb / max(c.a, 0.001));
+  vec2 p = uv * u_res / 6.0; float ink = 1.0;
+  if (l < 0.8 && mod(p.x + p.y, 4.0) < 1.0) ink = 0.0;
+  if (l < 0.6 && mod(p.x - p.y, 4.0) < 1.0) ink = 0.0;
+  if (l < 0.4 && mod(p.x + p.y + 2.0, 4.0) < 1.0) ink = 0.0;
+  if (l < 0.2 && mod(p.x - p.y + 2.0, 4.0) < 1.0) ink = 0.0;
+  return vec4(mix(c.rgb, vec3(ink) * c.a, u_amt), c.a);
+}` },
+  { id: 'risograph', name: 'Risografia', cat: 'art', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); float l = luma(c.rgb / max(c.a, 0.001));
+  float g = rand(floor(uv * u_res / 2.0));
+  vec3 pink = vec3(1.0, 0.28, 0.55), blue = vec3(0.1, 0.35, 0.9);
+  vec3 col = vec3(1.0);
+  col *= mix(vec3(1.0), pink, step(g, 1.0 - l) * 0.9);
+  col *= mix(vec3(1.0), blue, step(g, smoothstep(0.3, 0.9, 1.0 - l)) * 0.7);
+  return vec4(mix(c.rgb, col * c.a, u_amt), c.a);
+}` },
+  { id: 'pointillism', name: 'Pontilhismo', cat: 'art', glsl: `
+vec4 effect(vec2 uv){
+  float s = mix(220.0, 70.0, u_amt);
+  vec2 g = uv * vec2(s, s * u_res.y / u_res.x);
+  vec2 id = floor(g); vec2 f = fract(g) - 0.5 + (vec2(rand(id), rand(id + 3.0)) - 0.5) * 0.3;
+  vec4 cc = texture2D(u_tex, (id + 0.5) / vec2(s, s * u_res.y / u_res.x));
+  float dotm = smoothstep(0.5, 0.4, length(f));
+  vec3 col = mix(vec3(0.96, 0.94, 0.9), cc.rgb, dotm);
+  vec4 c = tex(uv);
+  return vec4(mix(c.rgb, col * c.a, u_amt), c.a);
+}` },
+  { id: 'gradient-map', name: 'Mapa pôr do sol', cat: 'color', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); float l = luma(c.rgb / max(c.a, 0.001));
+  vec3 col = l < 0.5 ? mix(vec3(0.15, 0.02, 0.3), vec3(0.95, 0.25, 0.35), l * 2.0) : mix(vec3(0.95, 0.25, 0.35), vec3(1.0, 0.85, 0.4), (l - 0.5) * 2.0);
+  return vec4(mix(c.rgb, col * c.a, u_amt), c.a);
+}` },
+  { id: 'gold', name: 'Dourado', cat: 'color', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); float l = luma(c.rgb / max(c.a, 0.001));
+  vec3 col = mix(vec3(0.2, 0.12, 0.02), vec3(1.0, 0.85, 0.45), l) + pow(l, 6.0) * 0.4;
+  return vec4(mix(c.rgb, col * c.a, u_amt), c.a);
+}` },
+  { id: 'keep-red', name: 'Só vermelho', cat: 'color', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec3 col = c.rgb / max(c.a, 0.001); vec3 hsv = rgb2hsv(col);
+  float keep = smoothstep(0.06, 0.02, min(hsv.x, 1.0 - hsv.x)) * step(0.3, hsv.y);
+  return vec4(mix(col, mix(vec3(luma(col)), col, keep), u_amt) * c.a, c.a);
+}` },
+  { id: 'teal-boost', name: 'Turquesa intenso', cat: 'color', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec3 col = c.rgb / max(c.a, 0.001); vec3 hsv = rgb2hsv(col);
+  float sel = smoothstep(0.2, 0.0, abs(hsv.x - 0.5));
+  hsv.y = min(1.0, hsv.y * (1.0 + sel * u_amt)); hsv.z = min(1.0, hsv.z * (1.0 + sel * 0.2 * u_amt));
+  return vec4(hsv2rgb(hsv) * c.a, c.a);
+}` },
+  { id: 'drunk', name: 'Tontura', cat: 'motion', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec2 o = vec2(sin(u_time * 1.3), cos(u_time * 0.9)) * 0.015 * u_amt;
+  vec4 a = texture2D(u_tex, (uv - 0.5) / 1.05 + 0.5 + o);
+  vec4 b = texture2D(u_tex, (uv - 0.5) / 1.05 + 0.5 - o);
+  return mix(a, b, 0.5);
+}` },
+  { id: 'beat-shake', name: 'Tremor na batida', cat: 'trend', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  float k = fract(u_time * 2.0); float e = exp(-k * 10.0);
+  vec2 o = vec2(sin(u_time * 80.0), cos(u_time * 63.0)) * 0.02 * e * u_amt;
+  float s = 1.0 + 0.06 * e * u_amt;
+  vec4 c = texture2D(u_tex, (uv - 0.5) / s + 0.5 + o);
+  c.r = texture2D(u_tex, (uv - 0.5) / s + 0.5 + o * 2.0).r;
+  return c;
+}` },
+  { id: 'zoom-loop', name: 'Zoom vai e vem', cat: 'motion', animated: true, glsl: `
+vec4 effect(vec2 uv){ float s = 1.0 + 0.1 * u_amt * (0.5 - 0.5 * cos(u_time * 1.5)); return texture2D(u_tex, (uv - 0.5) / s + 0.5); }` },
+  { id: 'vertigo', name: 'Vertigem', cat: 'motion', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec2 p = uv - 0.5; p.x *= u_res.x / u_res.y;
+  float a = sin(u_time * 0.8) * 0.15 * u_amt; float s = 1.0 + 0.15 * u_amt * (0.5 + 0.5 * sin(u_time * 0.8));
+  p = mat2(cos(a), -sin(a), sin(a), cos(a)) * p / s; p.x /= u_res.x / u_res.y;
+  return texture2D(u_tex, p + 0.5);
+}` },
+  { id: 'fireflies', name: 'Vaga-lumes', cat: 'nature', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec2 asp = vec2(u_res.x / u_res.y, 1.0); vec3 acc = vec3(0.0);
+  for (int i = 0; i < 18; i++) {
+    float fi = float(i);
+    vec2 pos = vec2(rand(vec2(fi, 1.0)) + 0.05 * sin(u_time * (0.5 + rand(vec2(fi, 2.0))) + fi), rand(vec2(fi, 3.0)) + 0.05 * cos(u_time * 0.7 + fi));
+    float b = 0.5 + 0.5 * sin(u_time * 3.0 + fi * 2.0);
+    acc += vec3(1.0, 0.9, 0.4) * 0.0009 / (pow(length((uv - pos) * asp), 2.0) + 0.0006) * b;
+  }
+  acc *= u_amt;
+  return vec4(c.rgb + acc, max(c.a, min(1.0, length(acc))));
+}` },
+  { id: 'petals', name: 'Pétalas', cat: 'nature', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec2 asp = vec2(u_res.x / u_res.y, 1.0);
+  vec2 p = uv * asp * 7.0 + vec2(sin(u_time * 0.7 + uv.y * 3.0) * 0.4, u_time * 0.8);
+  vec2 id = floor(p); vec2 f = fract(p) - 0.5; float r = rand(id);
+  float an = u_time * 2.0 + r * 6.0;
+  vec2 q = mat2(cos(an), -sin(an), sin(an), cos(an)) * (f - (vec2(rand(id + 1.0), rand(id + 2.0)) - 0.5) * 0.5);
+  float m = smoothstep(0.02, 0.0, length(q / vec2(0.16, 0.08)) - 1.0) * step(0.6, r);
+  vec3 col = mix(vec3(1.0, 0.7, 0.8), vec3(1.0, 0.85, 0.9), r);
+  return vec4(mix(c.rgb, col, m * u_amt), max(c.a, m * u_amt));
+}` },
+  { id: 'bubbles', name: 'Bolhas', cat: 'nature', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec2 asp = vec2(u_res.x / u_res.y, 1.0);
+  vec2 p = uv * asp * 6.0 + vec2(0.0, -u_time * 0.5);
+  vec2 id = floor(p); vec2 f = fract(p) - 0.5; float r = rand(id);
+  float d = length(f - (vec2(rand(id + 4.0), rand(id + 5.0)) - 0.5) * 0.4 + vec2(sin(u_time + r * 6.0) * 0.08, 0.0));
+  float rad = 0.12 + 0.12 * r;
+  float ring = smoothstep(0.02, 0.0, abs(d - rad)) * step(0.55, r);
+  float spec = smoothstep(rad * 0.35, 0.0, length(f + vec2(rad * 0.4))) * step(0.55, r);
+  float m = clamp(ring * 0.8 + spec * 0.6, 0.0, 1.0) * u_amt;
+  return vec4(c.rgb + vec3(0.8, 0.95, 1.0) * m, max(c.a, m));
+}` },
+  { id: 'lightning', name: 'Relâmpago', cat: 'nature', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  float k = fract(u_time * 0.4); float flash = step(k, 0.06) * (0.6 + 0.4 * rand(vec2(floor(u_time * 30.0), 1.0)));
+  float x = 0.5 + (noise(vec2(uv.y * 8.0, floor(u_time * 0.4))) - 0.5) * 0.3;
+  float bolt = smoothstep(0.006, 0.0, abs(uv.x - x)) * step(0.35, uv.y) * step(k, 0.06);
+  c.rgb = c.rgb * (1.0 + flash * 1.2 * u_amt) + vec3(0.8, 0.85, 1.0) * bolt * u_amt;
+  return vec4(c.rgb, max(c.a, bolt * u_amt));
+}` },
+  { id: 'dust-motes', name: 'Poeira no ar', cat: 'nature', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec2 asp = vec2(u_res.x / u_res.y, 1.0);
+  vec2 p = uv * asp * 25.0 + vec2(u_time * 0.2, sin(u_time * 0.3) * 0.5);
+  vec2 id = floor(p); vec2 f = fract(p) - 0.5;
+  float m = smoothstep(0.08, 0.0, length(f - (vec2(rand(id), rand(id + 1.0)) - 0.5) * 0.7)) * step(0.85, rand(id + 2.0)) * (0.5 + 0.5 * sin(u_time * 2.0 + rand(id) * 9.0));
+  m *= u_amt * 0.7;
+  return vec4(c.rgb + vec3(1.0, 0.95, 0.85) * m, max(c.a, m));
+}` },
+  { id: 'film-frame', name: 'Película 35mm', cat: 'frame', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  float side = 0.08 * u_amt; float x = min(uv.x, 1.0 - uv.x);
+  if (x < side) {
+    vec2 h = vec2(x / side, fract(uv.y * 18.0));
+    float hole = step(abs(h.x - 0.5), 0.22) * step(abs(h.y - 0.5), 0.25);
+    return mix(vec4(0.05, 0.04, 0.03, 1.0), vec4(0.9, 0.85, 0.7, 1.0) * 0.3, hole);
+  }
+  return c;
+}` },
+  { id: 'thirds-grid', name: 'Grade dos terços', cat: 'frame', glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv);
+  float l = 0.0; vec2 px = 1.5 / u_res;
+  l += step(abs(uv.x - 1.0 / 3.0), px.x) + step(abs(uv.x - 2.0 / 3.0), px.x) + step(abs(uv.y - 1.0 / 3.0), px.y) + step(abs(uv.y - 2.0 / 3.0), px.y);
+  return vec4(mix(c.rgb, vec3(1.0), clamp(l, 0.0, 1.0) * 0.6 * u_amt), c.a);
+}` },
+  { id: 'viewfinder', name: 'Visor de câmera', cat: 'frame', animated: true, glsl: `
+vec4 effect(vec2 uv){
+  vec4 c = tex(uv); vec2 asp = vec2(u_res.x / u_res.y, 1.0);
+  vec2 m = abs(uv - 0.5) * asp; float line = 0.0;
+  float cx = step(length((uv - 0.5) * asp), 0.04) - step(length((uv - 0.5) * asp), 0.036);
+  line += cx;
+  line += step(abs(uv.x - 0.5), 0.0015) * step(abs(uv.y - 0.5), 0.02) * step(0.006, abs(uv.y - 0.5));
+  vec2 b = abs(uv - 0.5);
+  line += step(0.44, b.x) * step(b.x, 0.445) * step(0.38, b.y) + step(0.44, b.y) * step(b.y, 0.445) * step(0.38, b.x);
+  float dot_ = step(length((uv - vec2(0.88, 0.92)) * asp), 0.012) * step(0.5, fract(u_time));
+  c.rgb = mix(c.rgb, vec3(1.0), clamp(line, 0.0, 1.0) * u_amt);
+  c.rgb = mix(c.rgb, vec3(1.0, 0.15, 0.15), dot_ * u_amt);
+  return c;
+}` },
 ];
 
 export const EFFECT_MAP = new Map(EFFECTS.map((e) => [e.id, e]));

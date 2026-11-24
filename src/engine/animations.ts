@@ -1,7 +1,7 @@
 import { clamp, ease, kfValue } from '../model/timeline';
 import type { Clip } from '../model/types';
 
-export interface AnimDef { id: string; name: string; icon: string }
+export interface AnimDef { id: string; name: string; icon: string; /** only for text clips */ text?: boolean }
 
 export const IN_ANIMS: AnimDef[] = [
   { id: 'fade', name: 'Surgir', icon: '◐' },
@@ -22,9 +22,19 @@ export const IN_ANIMS: AnimDef[] = [
   { id: 'stretch', name: 'Esticar', icon: '↔' },
   { id: 'typewriter', name: 'Máquina de escrever', icon: '⌨' },
   { id: 'shake', name: 'Tremer', icon: '≋' },
+  { id: 'letters-rise', name: 'Letras subindo', icon: '🔤', text: true },
+  { id: 'letters-fade', name: 'Letras surgindo', icon: '✍️', text: true },
+  { id: 'letters-pop', name: 'Letras pop', icon: '💬', text: true },
+  { id: 'letters-drop', name: 'Letras caindo', icon: '⬇️', text: true },
+  { id: 'letters-spin', name: 'Letras girando', icon: '🌀', text: true },
+  { id: 'letters-blur', name: 'Letras em foco', icon: '🔎', text: true },
+  { id: 'words-up', name: 'Palavra a palavra', icon: '📝', text: true },
+  { id: 'scramble', name: 'Decodificar', icon: '🔐', text: true },
+  { id: 'glitch-in', name: 'Glitch', icon: '📺', text: true },
+  { id: 'neon-in', name: 'Neon acendendo', icon: '💡', text: true },
 ];
 
-export const OUT_ANIMS: AnimDef[] = IN_ANIMS.filter((a) => a.id !== 'typewriter');
+export const OUT_ANIMS: AnimDef[] = IN_ANIMS.filter((a) => a.id !== 'typewriter' && a.id !== 'scramble' && a.id !== 'neon-in');
 
 export const LOOP_ANIMS: AnimDef[] = [
   { id: 'pulse', name: 'Pulsar', icon: '♥' },
@@ -37,13 +47,24 @@ export const LOOP_ANIMS: AnimDef[] = [
   { id: 'zoom-slow', name: 'Ken Burns', icon: '🎞' },
   { id: 'swing', name: 'Pêndulo', icon: '⏲' },
   { id: 'jelly', name: 'Gelatina', icon: '🍮' },
+  { id: 'letters-wave', name: 'Onda nas letras', icon: '🌊', text: true },
+  { id: 'letters-bounce', name: 'Letras pulando', icon: '🏀', text: true },
+  { id: 'rainbow', name: 'Arco-íris', icon: '🌈', text: true },
+  { id: 'shimmer', name: 'Brilho passando', icon: '✨', text: true },
+  { id: 'neon-flicker', name: 'Neon piscando', icon: '🔦', text: true },
+  { id: 'glow-pulse', name: 'Brilho pulsando', icon: '💫', text: true },
 ];
+
+const CHAR_ANIMS = new Set(['letters-rise', 'letters-fade', 'letters-pop', 'letters-drop', 'letters-spin', 'letters-blur', 'words-up', 'scramble', 'glitch-in', 'neon-in', 'letters-wave', 'letters-bounce', 'rainbow', 'shimmer', 'neon-flicker', 'glow-pulse']);
 
 export interface AnimState {
   x: number; y: number; scale: number; scaleX: number; scaleY: number; rotation: number; opacity: number; blur: number; reveal: number;
+  /** per-letter text animation (text clips) */
+  chars?: { type: string; p: number; t: number } | null;
 }
 
 function applyAnim(id: string, p: number, s: AnimState, dirIn: boolean) {
+  if (CHAR_ANIMS.has(id)) { s.chars = { type: id, p: Math.min(s.chars?.p ?? 1, p), t: s.chars?.t ?? 0 }; return; }
   // p: 0 -> start of animation (hidden state for "in"), 1 -> fully visible
   const e = ease('easeOut', p);
   const inv = 1 - e;
@@ -70,6 +91,7 @@ function applyAnim(id: string, p: number, s: AnimState, dirIn: boolean) {
 }
 
 function applyLoop(id: string, lt: number, cycle: number, s: AnimState) {
+  if (CHAR_ANIMS.has(id)) { s.chars = s.chars ? { ...s.chars, t: lt * (1 / Math.max(0.2, cycle)) } : { type: id, p: 1, t: lt * (1 / Math.max(0.2, cycle)) }; return; }
   const ph = (lt / Math.max(0.1, cycle)) * Math.PI * 2;
   switch (id) {
     case 'pulse': s.scale *= 1 + 0.06 * Math.sin(ph); break;
