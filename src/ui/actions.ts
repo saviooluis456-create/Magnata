@@ -1,5 +1,6 @@
 import { audioBufferToWav } from '../engine/audioMix';
-import { importBlob, importFile, kindOf } from '../engine/media';
+import { importBlob, importFileFast, kindOf } from '../engine/media';
+import type { MediaAsset } from '../model/types';
 import type { Player } from '../engine/player';
 import { clipEnd, mainClips } from '../model/timeline';
 import { useEditor } from '../store/editor';
@@ -27,22 +28,27 @@ export function pickFiles(accept: string, multiple = true): Promise<File[]> {
 export async function importFiles(files: File[], target: 'main' | 'overlay' | 'audio') {
   const st = useEditor.getState();
   if (!files.length) return;
-  const assets = [];
   const errors: string[] = [];
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    if (!kindOf(f)) { errors.push(`${f.name}: formato não suportado`); continue; }
-    try {
-      st.setBusy({ msg: `Importando ${i + 1}/${files.length}…`, progress: i / files.length });
-      assets.push(await importFile(f, (m) => st.setBusy({ msg: m, progress: i / files.length })));
-    } catch (e) {
-      errors.push(`${f.name}: ${(e as Error).message}`);
+  const valid = files.filter((f) => { if (kindOf(f)) return true; errors.push(`${f.name}: formato não suportado`); return false; });
+  if (valid.length > 1 || valid.some((f) => f.size > 20e6)) st.setBusy({ msg: valid.length > 1 ? `Adicionando ${valid.length} arquivos…` : 'Adicionando…' });
+  const existing = st.project?.media ?? [];
+  const onEnrich = (id: string, patch: Partial<MediaAsset>) => useEditor.getState().patchMedia(id, patch);
+  // read metadata of several files in parallel (keeps the original order)
+  const results: (MediaAsset | null)[] = new Array(valid.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < valid.length) {
+      const i = next++;
+      try { results[i] = await importFileFast(valid[i], existing, onEnrich); }
+      catch (e) { errors.push(`${valid[i].name}: ${(e as Error).message}`); }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, valid.length) }, worker));
   st.setBusy(null);
+  const assets = results.filter(Boolean) as MediaAsset[];
   if (assets.length) st.addMedia(assets, target);
   if (errors.length) st.notify(errors.join(' · '), 'error');
-  else if (assets.length) st.notify(`${assets.length} ${assets.length > 1 ? 'arquivos importados' : 'arquivo importado'}`, 'ok');
+  else if (assets.length) st.notify(`${assets.length} ${assets.length > 1 ? 'arquivos adicionados' : 'arquivo adicionado'}`, 'ok');
 }
 
 export async function importGenerated(blob: Blob, name: string, target: 'main' | 'overlay' | 'audio') {
