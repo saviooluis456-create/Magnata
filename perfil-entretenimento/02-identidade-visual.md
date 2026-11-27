@@ -12,7 +12,7 @@
 - **Canal do YouTube:** `Luiz no Set`.
 - **Mesmo @ em todas as redes:** `@luiznoset`. Se estiver ocupado em alguma, usar `@luiznoset.br` (ou `@luiznosetbr` onde ponto não é aceito) **em todas**.
 - **Domínio:** `luiznoset.com` estava livre em 27/11/2026; `luiznoset.com.br` precisa ser conferido no registro.br.
-- **E-mail público:** `contato@luiznoset.com.br` (ou `contato.luiznoset@gmail.com` até ter o domínio).
+- **E-mail público:** `luiznoset@gmail.com`.
 
 **Linguagem de set (vocabulário da marca):**
 | Momento | Fala |

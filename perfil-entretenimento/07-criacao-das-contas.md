@@ -7,7 +7,7 @@
 | Conta | Endereço | Onde aparece |
 |---|---|---|
 | **Conta mestre** (cria e recupera as redes) | Gmail com o seu nome, sem relação visível com "Luiz no Set" | **Nunca** em público |
-| **Contato** (parcerias, imprensa) | `contato@luiznoset.com.br` (domínio próprio) ou `contato.luiznoset@gmail.com` (alternativa grátis) | Bio, descrição do YouTube, mídia kit |
+| **Contato** (parcerias, imprensa) | `luiznoset@gmail.com` (definido). Quando tiver domínio, `contato@luiznoset.com.br` pode redirecionar para ele. | Bio, descrição do YouTube, mídia kit |
 
 Com domínio próprio, dá para ter também `parcerias@luiznoset.com.br` redirecionando para o mesmo lugar.
 
@@ -50,7 +50,7 @@ Aqui você descobre o que acontece por trás das câmeras: as notícias de filme
 
 Novo vídeo longo todo domingo + Shorts todos os dias.
 
-📩 Parcerias e imprensa: contato@luiznoset.com.br
+📩 Parcerias e imprensa: luiznoset@gmail.com
 
 E... corta!
 ```
@@ -74,7 +74,7 @@ E... corta!
 7. [ ] Criar um **perfil separado no navegador** só para o Luiz no Set.
 
 **Dia 1–2: e-mail de contato**
-8. [ ] Configurar `contato@luiznoset.com.br` (Zoho Mail grátis, Google Workspace ou redirecionamento para a conta mestre). Se for usar Gmail, criar `contato.luiznoset@gmail.com`.
+8. [ ] Criar `luiznoset@gmail.com` (contato público) com senha própria e verificação em duas etapas. Ele NÃO é usado para criar as redes.
 
 **Dia 2: redes**
 9. [ ] **YouTube:** entrar com a conta mestre, criar canal como **Conta de Marca** "Luiz no Set", definir @luiznoset, descrição, banner, foto, playlists. Ativar 2 etapas.
