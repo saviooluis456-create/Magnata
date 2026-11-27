@@ -4,23 +4,27 @@
 
 ---
 
-## 1. Nome do perfil (sugestões)
+## 1. Nome do perfil: **Luiz no Set** · `@luiznoset`
 
-Domínios checados em 27/11/2026 (RDAP do Registro.br e da Verisign). O @ nas redes precisa ser conferido à mão.
-Primeiras ideias descartadas porque os domínios já tinham dono: Fora de Cena, Corte Final, Sala Escura, Cena do Crime, Quarta Parede.
+**O conceito:** o set é onde o filme acontece de verdade. O Luiz está lá dentro e conta o que viu: a notícia antes de todo mundo, o bastidor, a história real por trás da ficção.
 
-| @ | Nome | .com.br | .com | Por que funciona |
-|---|---|---|---|---|
-| **@telaescura** | Tela Escura | livre | livre | Cinema (tela) + lado sombrio (crime). Combina com o conceito "jornal da sala escura". |
-| **@atrasdacena** | Atrás da Cena | livre | livre | Bastidores puros; fala bem em voz alta. |
-| **@cinedossie** | CineDossiê | livre | livre | Investigação + cinema; ótimo para crime real e notícia. |
-| **@cenasecreta** | Cena Secreta | livre | livre | Curiosidade e mistério no nome. |
-| **@luzapagada** | Luz Apagada | livre | livre | O momento em que o filme começa. Também soa sombrio. |
-| **@foradoroteiro** | Fora do Roteiro | livre | ocupado | Bastidores e o que a vida real fez fora do script. |
-| **@bastidorpop** | Bastidor Pop | livre | livre | Explícito, bom para busca. |
-| **@sessaodocrime** | Sessão do Crime | livre | livre | Forte para crime real, mas estreita o perfil. |
+- **Nome de exibição (Instagram/TikTok):** `Luiz no Set | Filmes, Séries e Crimes Reais` (o campo nome conta na busca).
+- **Canal do YouTube:** `Luiz no Set`.
+- **Mesmo @ em todas as redes:** `@luiznoset`. Se estiver ocupado em alguma, usar `@luiznoset.br` (ou `@luiznosetbr` onde ponto não é aceito) **em todas**.
+- **Domínio:** `luiznoset.com` estava livre em 27/11/2026; `luiznoset.com.br` precisa ser conferido no registro.br.
+- **E-mail público:** `contato@luiznoset.com.br` (ou `contato.luiznoset@gmail.com` até ter o domínio).
 
-Use **o mesmo @ e o mesmo nome em todas as redes**. Bio com palavras-chave: *"Filmes, séries, crimes reais e bastidores. Notícias todo dia."*
+**Linguagem de set (vocabulário da marca):**
+| Momento | Fala |
+|---|---|
+| Abertura do vídeo longo | *"Silêncio no set."* (dito baixo, depois do cold open) |
+| Retomada de atenção | *"Mas espera, que essa cena ainda não acabou."* |
+| Aviso de spoiler | *"Alerta de spoiler: quem não viu, sai do set agora."* |
+| **Encerramento (assinatura)** | ***"E... corta!"*** |
+| Comunidade | Seguidores = **"equipe"**. *"Equipe, me conta nos comentários..."* |
+
+**Logo:** "LUIZ NO SET" em Anton, com uma **claquete** estilizada no lugar do "O" de "NO" (listras em âmbar e preto). Versão ícone (foto de perfil fora do rosto): só a claquete com "LS".
+**Foto de perfil:** recomendado **o seu rosto**, fundo preto, luz lateral âmbar (perfis com rosto geram mais vínculo).
 
 ## 2. Paleta
 
@@ -78,4 +82,4 @@ Regra: **no máximo 2 cores fortes por tela** (âmbar + a cor do selo).
 - **Quem fala:** alguém que sabe muito e conta como se fosse para um amigo. Tom da Carol Moreira, ritmo de noticiário.
 - **Sempre:** opinião clara, frase curta, verbo no presente ("ela descobre", "o estúdio cancela").
 - **Nunca:** "Oi gente, tudo bem?", "Hoje eu vou falar sobre...", gírias datadas, sensacionalismo com vítimas reais.
-- **Assinatura verbal** (escolha uma e use sempre no fim dos vídeos longos): *"E isso aconteceu fora de cena."* (se o nome for Fora de Cena).
+- **Assinatura verbal:** todo vídeo termina com ***"E... corta!"*** (no curto, pode ser só na tela, se atrapalhar o loop).

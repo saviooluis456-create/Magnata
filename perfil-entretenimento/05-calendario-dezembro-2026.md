@@ -48,8 +48,8 @@ Notícias urgentes do dia **entram por cima** desta grade.
 ### Semana 1 (01 a 06/12)
 | Dia | Quadro | Pauta planejada | Formato |
 |---|---|---|---|
-| Ter 01 | Fora de Cena | *Trinity* estreia na Netflix: Richard Madden depois de *Citadel*, o que mudou na carreira dele | N3 |
-| Qua 02 | Caso Real | Apresentação do perfil: "Este perfil conta o que acontece fora de cena" + caso real curto que virou filme | N3 |
+| Ter 01 | Bastidores do Set | *Trinity* estreia na Netflix: Richard Madden depois de *Citadel*, o que mudou na carreira dele | N3 |
+| Qua 02 | Caso Real | Apresentação do perfil: "Eu sou o Luiz, e aqui você entra no set" + caso real curto que virou filme | N3 |
 | Qui 03 | Estreia da Semana | *Orgulho e Preconceito*: por que essa história é adaptada há 200 anos (e o que muda nesta) | N2 + C "Todas as versões de Orgulho e Preconceito" |
 | Sex 04 | O Que Ver | 5 estreias do fim de semana: *Orgulho e Preconceito*, *Verão da Lata*, *Psicopata Vitoriana*, *Noite Ainda Mais Infeliz*, *Duna* em IMAX | N2 + C |
 | Sáb 05 | Curiosidade | *Verão da Lata*: a história real das latas de maconha que apareceram nas praias do Rio em 1987 | N3 |
@@ -59,7 +59,7 @@ Notícias urgentes do dia **entram por cima** desta grade.
 | Dia | Quadro | Pauta planejada | Formato |
 |---|---|---|---|
 | Seg 07 | Resumo | 3 notícias da semana + *C.B. Strike* e *The Chosen* estreiam hoje | N2 |
-| Ter 08 | Fora de Cena | *Only Murders* vai para Londres: bastidores da mudança | N2 |
+| Ter 08 | Bastidores do Set | *Only Murders* vai para Londres: bastidores da mudança | N2 |
 | Qua 09 | Caso Real | **Rauls estreia hoje**: o golpe real mais comum no Brasil e como ele funciona | N3 |
 | Qui 10 | Estreia | *Shrek* 25 anos: o filme quase teve outro dublador e outro visual (bastidor clássico) | N3 |
 | Sex 11 | O Que Ver | Fim de semana: *Bad Day*, *O Espetáculo Vai Começar*, *One Piece* nos cinemas, *Behemoth!* | N2 + C |
@@ -70,7 +70,7 @@ Notícias urgentes do dia **entram por cima** desta grade.
 | Dia | Quadro | Pauta planejada | Formato |
 |---|---|---|---|
 | Seg 14 | Resumo | **L extra: Vingadores — o caminho até aqui** + corte "o que ver antes em 60s" | L + N2 |
-| Ter 15 | Fora de Cena | Bastidores de *Duna: Parte Três*: a filmagem, o salto de 17 anos na história | N3 |
+| Ter 15 | Bastidores do Set | Bastidores de *Duna: Parte Três*: a filmagem, o salto de 17 anos na história | N3 |
 | Qua 16 | Estreia | **Vingadores: Doutor Destino estreia** — reação sem spoiler / cenas pós-créditos? (sem spoiler) | N1 + C |
 | Qui 17 | Estreia | **Duna: Parte Três** — vale a pena? (opinião sem spoiler) + *Além do que os Olhos Veem* | N2 |
 | Sex 18 | O Que Ver | Fim de semana: *Frisco King*, *Ted*, os dois blockbusters | N2 + C |
@@ -81,7 +81,7 @@ Notícias urgentes do dia **entram por cima** desta grade.
 | Dia | Quadro | Pauta planejada | Formato |
 |---|---|---|---|
 | Seg 21 | Resumo | Bilheteria Vingadores × Duna: quem ganhou a semana | N1 |
-| Ter 22 | Fora de Cena | Fincher e Brad Pitt: a história dos dois (*Seven*, *Clube da Luta*, *Benjamin Button*) antes de *Cliff Booth* | N3 |
+| Ter 22 | Bastidores do Set | Fincher e Brad Pitt: a história dos dois (*Seven*, *Clube da Luta*, *Benjamin Button*) antes de *Cliff Booth* | N3 |
 | Qua 23 | Estreia | *Cliff Booth* chega à Netflix: o que você precisa saber de *Era Uma Vez em Hollywood* | N2 |
 | Qui 24 | Estreia | *Emily em Paris* se despede: a série mais odiada que todo mundo assiste | N2 |
 | Sex 25 | Estreia | **Harry Potter da HBO estreia** — primeiras impressões sem spoiler | N1 + C "Elenco HBO × filmes" |

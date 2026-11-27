@@ -3,7 +3,7 @@
 Perfil sobre **filmes, séries, casos criminais ligados ao entretenimento, bastidores e notícias do dia/semana**.
 Plataformas: **TikTok, Instagram (Reels + carrossel), YouTube Shorts e YouTube vídeo longo**.
 
-> Nome do perfil: **[A DEFINIR]**. Sugestões em `02-identidade-visual.md`.
+> Perfil: **Luiz no Set** · `@luiznoset`. Identidade em `02-identidade-visual.md`; criação das contas em `07-criacao-das-contas.md`.
 
 ---
 
@@ -30,6 +30,7 @@ As regras desses comandos ficam em `.claude/skills/pesquisar/` e `.claude/skills
 | `04-legendas-e-hashtags.md` | Fórmulas de legenda por rede, SEO social, títulos do YouTube, hashtags. |
 | `05-calendario-dezembro-2026.md` | Planejamento de dezembro dia a dia, com estreias, ângulos e os vídeos longos do mês. |
 | `06-pilares-e-rotina.md` | Editorias, frequência, grade semanal, rotina de produção e regras éticas/jurídicas. |
+| `07-criacao-das-contas.md` | Bios prontas, e-mails, segurança e passo a passo para criar as contas. |
 | `templates/` | Modelos em branco de pauta, roteiro curto e roteiro longo. |
 | `pautas/` | Saída do comando `pesquisar`. |
 | `roteiros/` | Saída do comando `crie os vídeos`. |

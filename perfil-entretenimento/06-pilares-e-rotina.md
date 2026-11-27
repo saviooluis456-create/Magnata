@@ -26,7 +26,7 @@ Começo realista: **1 curto por dia + 1 longo por semana**. Consistência vale m
 | Dia | Quadro | Formato |
 |---|---|---|
 | Segunda | **Resumo da Semana**: as 3 notícias que importam | N2 |
-| Terça | **Fora de Cena**: bastidor de produção | N3 |
+| Terça | **Bastidores do Set**: bastidor de produção | N3 |
 | Quarta | **Caso Real**: crime ligado a filme/série/doc | N3 |
 | Quinta | **Estreia da Semana** (cinema estreia na quinta no Brasil) | N2 + carrossel |
 | Sexta | **O Que Ver no Fim de Semana** (streaming) | N2 + carrossel |
