@@ -8,11 +8,14 @@ import * as db from './db';
 import type { Env } from './env';
 import { addBenchChannel, generateReport, intel, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
 import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
-import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, setup, type Scope } from './auth';
+import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveZernioKey, setup, type Scope } from './auth';
+import { connectUrl, ensureProfile } from './providers/zernio';
 import { callback } from './providers/types';
 import { corsHeaders, HttpError, json, now, uid } from './util';
 
 const isNetwork = (x: string): x is Network => (NETWORKS as string[]).includes(x);
+/** env with a different Zernio key, keeping every binding intact. */
+const withKey = (env: Env, key: string) => new Proxy(env, { get: (t, k) => (k === 'ZERNIO_API_KEY' ? key : (t as unknown as Record<string | symbol, unknown>)[k]) }) as Env;
 
 interface CreatePostBody {
   objectKey: string;
@@ -44,6 +47,19 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/api/login' && m === 'POST') {
     const b = (await req.json().catch(() => ({}))) as { password?: string };
     return json(env, { token: await login(env, b.password ?? '') });
+  }
+
+  // ---------- quick connection callback (Zernio redirects back here) ----------
+  if (path === '/oauth/zernio/callback' && m === 'GET') {
+    const back = (q: string) => Response.redirect(`${env.APP_URL}#central?${q}`, 302);
+    const network = url.searchParams.get('network') ?? '';
+    if (!isNetwork(network)) return back('erro=rede');
+    if (!(await db.takeState(env, url.searchParams.get('state') ?? '', network))) return back('erro=sessao-expirada');
+    const accountId = url.searchParams.get('accountId');
+    if (url.searchParams.get('error') || !accountId) return back(`erro=${encodeURIComponent(url.searchParams.get('error_message') ?? url.searchParams.get('error') ?? 'cancelado')}`);
+    const username = url.searchParams.get('username') ?? undefined;
+    await db.saveAccount(env, { network, remoteId: accountId, name: username, handle: username, token: { access: 'zernio', via: 'zernio', profileId: url.searchParams.get('profileId') ?? undefined } });
+    return back(`conectado=${network}`);
   }
 
   // ---------- OAuth callback (browser redirect from the platform; protected by the one-time state) ----------
@@ -246,7 +262,25 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (path === '/api/apps' && m === 'GET') {
     need('admin');
-    return json(env, Object.fromEntries(NETWORKS.map((n) => [n, { configured: PROVIDERS[n].configured(env), redirectUri: callback(env, n) }])));
+    return json(env, { quick: !!env.ZERNIO_API_KEY, ...Object.fromEntries(NETWORKS.map((n) => [n, { configured: PROVIDERS[n].configured(env), redirectUri: callback(env, n) }])) });
+  }
+  if (path === '/api/quick/key' && (m === 'PUT' || m === 'DELETE')) {
+    need('admin');
+    if (m === 'DELETE') { await saveZernioKey(env, null); return json(env, { ok: true }); }
+    const { key } = await body<{ key: string }>();
+    await saveZernioKey(env, key ?? '');
+    // Validate right away with the key just typed.
+    try { await ensureProfile(withKey(env, key.trim())); }
+    catch (e) { await saveZernioKey(env, null); throw e; }
+    return json(env, { ok: true });
+  }
+  const quick = path.match(/^\/api\/quick\/connect\/(\w+)$/);
+  if (quick && m === 'POST' && isNetwork(quick[1])) {
+    need('admin');
+    const state = uid('st_');
+    await db.saveState(env, state, quick[1]);
+    const redirect = `${env.API_URL.replace(/\/$/, '')}/oauth/zernio/callback?${new URLSearchParams({ network: quick[1], state })}`;
+    return json(env, { url: await connectUrl(env, quick[1], redirect) });
   }
   const appm = path.match(/^\/api\/apps\/(\w+)$/);
   if (appm && isNetwork(appm[1])) {

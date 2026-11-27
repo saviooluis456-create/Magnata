@@ -11,7 +11,19 @@ O servidor **nunca usa senha das redes**. Você conecta cada conta pelo botão o
 
 ---
 
-## O que é possível em cada rede
+## Dois jeitos de conectar as redes
+
+| | ⚡ Conexão rápida (recomendado) | App próprio (avançado) |
+|---|---|---|
+| Como | Conta no Zernio + 1 toque por rede | Criar app de desenvolvedor no Meta, Google e TikTok |
+| Tempo | ~2 minutos | ~15 minutos por rede |
+| Custo | 2 contas grátis; a 3ª ~US$ 6/mês. Comentários podem exigir o complemento de caixa de entrada | Grátis |
+| TikTok | Vídeos públicos direto | Privados até a auditoria do TikTok |
+| Concorrentes do YouTube (Inteligência) | Precisa também do YouTube pelo app próprio | ✅ |
+
+Dá para misturar: por exemplo, Instagram e TikTok pela conexão rápida e YouTube pelo app próprio.
+
+## O que é possível em cada rede (app próprio)
 
 | | Instagram | TikTok | YouTube |
 |---|---|---|---|
@@ -40,7 +52,7 @@ Aprovação (auditoria) do TikTok e do Google: é gratuita, mas pede formulário
    - o **endereço da Central** (`https://central-do-set.xxxx.workers.dev`);
    - o **código de instalação** (uso único).
 4. Abra o endereço no celular → **Central do Set** → crie a sua senha com o código.
-5. Aba **Contas**: para cada rede, siga o passo a passo na tela, cole as chaves do app e toque em **Conectar**.
+5. Aba **Contas → ⚡ Conexão rápida**: crie uma conta grátis em zernio.com, copie a chave da API (Settings → API Keys), cole na Central e toque em **Conectar** em cada rede. Um toque por rede, sem app de desenvolvedor. (Alternativa avançada: "Usar app próprio", com o passo a passo na tela.)
 6. Aba **Contas → Conectar o Claude**: gere a chave e entregue ao Claude pelo formulário seguro.
 7. Depois, revogue o token da Cloudflare (ou deixe guardado se quiser que o Claude publique atualizações).
 

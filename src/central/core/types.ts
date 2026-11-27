@@ -35,6 +35,8 @@ export interface PostTarget {
   network: Network;
   status: TargetStatus;
   remoteId?: string;
+  /** Post id at the connection service (Zernio), when the account is connected through it. */
+  providerPostId?: string;
   url?: string;
   error?: string;
   publishedAt?: number;
@@ -98,6 +100,8 @@ export interface AccountStatus {
   /** TikTok/YouTube: posts stay private until the developer app passes the platform audit. */
   publicPosting: boolean;
   expiresAt?: number;
+  /** 'rapida' = connected through Zernio (one tap); 'oficial' = own developer app. */
+  via?: 'rapida' | 'oficial';
 }
 
 export type ReplyMode = 'aprovacao' | 'automatico' | 'desligado';

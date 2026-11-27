@@ -2,7 +2,7 @@ import type { CommentItem, MetricRow, Network, Post, Settings } from '../../src/
 import type { Env } from './env';
 import { decrypt, encrypt, now } from './util';
 
-export interface Token { access: string; refresh?: string; expiresAt?: number; refreshExpiresAt?: number }
+export interface Token { access: string; refresh?: string; expiresAt?: number; refreshExpiresAt?: number; via?: 'zernio'; profileId?: string }
 export interface Account { network: Network; remoteId: string; name?: string; handle?: string; token: Token }
 
 // ---------- accounts ----------

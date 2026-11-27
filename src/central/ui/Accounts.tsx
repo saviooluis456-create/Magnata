@@ -3,7 +3,7 @@ import { api, detectSameOrigin, getConfig, loginCentral, publicStatus, setConfig
 import { NETWORK_LABEL, NETWORKS, type Network } from '../core/types';
 import type { Notify } from './Central';
 
-type Apps = Record<Network, { configured: boolean; redirectUri: string }>;
+type Apps = { quick: boolean } & Record<Network, { configured: boolean; redirectUri: string }>;
 
 export function Accounts({ status, notify, refresh }: { status: StatusResponse | null; notify: Notify; refresh: () => Promise<void> }) {
   const [logged, setLogged] = useState(!!getConfig());
@@ -85,7 +85,8 @@ function Connected({ status, notify, refresh, onLogout }: { status: StatusRespon
 
   return (
     <div className="central-stack">
-      {NETWORKS.map((n) => <NetworkCard key={n} n={n} status={status} app={apps?.[n]} notify={notify} reload={reload} />)}
+      {apps && <QuickCard quick={apps.quick} notify={notify} reload={reload} />}
+      {NETWORKS.map((n) => <NetworkCard key={n} n={n} status={status} app={apps?.[n]} quick={!!apps?.quick} notify={notify} reload={reload} />)}
       <ClaudeAccess notify={notify} />
       {status && <Prefs status={status} notify={notify} refresh={refresh} />}
       <Security notify={notify} onLogout={onLogout} />
@@ -137,13 +138,48 @@ const GUIDE: Record<Network, (redirect: ReactNode) => ReactNode> = {
   ),
 };
 
-function NetworkCard({ n, status, app, notify, reload }: { n: Network; status: StatusResponse | null; app?: Apps[Network]; notify: Notify; reload: () => Promise<void> }) {
+function QuickCard({ quick, notify, reload }: { quick: boolean; notify: Notify; reload: () => Promise<void> }) {
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { await api.saveQuickKey(key); setKey(''); notify('Conexão rápida ativada! Agora é só tocar em Conectar.', 'ok'); await reload(); }
+    catch (e) { notify((e as Error).message, 'error'); } finally { setBusy(false); }
+  };
+  if (quick) {
+    return (
+      <div className="c-card quick-card on">
+        <div className="c-row"><h3>⚡ Conexão rápida ativa</h3><button className="btn small ghost" onClick={async () => { if (confirm('Desativar a conexão rápida? Contas conectadas por ela param de funcionar.')) { await api.removeQuickKey(); await reload(); } }}>Desativar</button></div>
+        <p className="hint">Toque em <b>Conectar</b> em cada rede abaixo e autorize. Pronto.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="c-card quick-card">
+      <h3>⚡ Conexão rápida (recomendado)</h3>
+      <p className="hint">Conecte Instagram, TikTok e YouTube com um toque cada, sem criar app de desenvolvedor. Usa o Zernio, um serviço com apps já aprovados pelas redes (2 contas grátis; a 3ª custa cerca de US$ 6/mês). No TikTok, os vídeos saem públicos direto. Responder comentários pode exigir o complemento de caixa de entrada do Zernio.</p>
+      <ol className="steps">
+        <li>Crie uma conta grátis em <a href="https://zernio.com" target="_blank" rel="noreferrer">zernio.com</a>.</li>
+        <li>No painel: <b>Settings → API Keys → Create</b>. Copie a chave (começa com <code>sk_</code>).</li>
+        <li>Cole aqui e toque em Ativar. Fica guardada criptografada na sua Central.</li>
+      </ol>
+      <input className="c-input" type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk_..." autoComplete="off" />
+      <button className="btn primary" disabled={busy || !key.trim().startsWith('sk_')} onClick={save}>{busy ? 'Ativando…' : 'Ativar conexão rápida'}</button>
+    </div>
+  );
+}
+
+function NetworkCard({ n, status, app, quick, notify, reload }: { n: Network; status: StatusResponse | null; app?: Apps[Network]; quick: boolean; notify: Notify; reload: () => Promise<void> }) {
   const acc = status?.accounts.find((a) => a.network === n);
+  const [advanced, setAdvanced] = useState(false);
   const [editing, setEditing] = useState(false);
   const [id, setId] = useState('');
   const [secret, setSecret] = useState('');
   const [busy, setBusy] = useState(false);
-  const showForm = !!app && (!app.configured || editing);
+  const showForm = !!app && advanced && (!app.configured || editing);
+  const quickConnect = async () => {
+    try { const { url } = await api.quickConnect(n); location.href = url; } catch (e) { notify((e as Error).message, 'error'); }
+  };
 
   const save = async () => {
     setBusy(true);
@@ -151,6 +187,7 @@ function NetworkCard({ n, status, app, notify, reload }: { n: Network; status: S
     catch (e) { notify((e as Error).message, 'error'); } finally { setBusy(false); }
   };
   const connect = async () => {
+    if (acc?.connected ? acc.via === 'rapida' : quick && !advanced) return quickConnect();
     try { const { url } = await api.connect(n); location.href = url; } catch (e) { notify((e as Error).message, 'error'); }
   };
   const disconnect = async () => {
@@ -160,7 +197,7 @@ function NetworkCard({ n, status, app, notify, reload }: { n: Network; status: S
 
   return (
     <div className={`c-card net-${n}`}>
-      <div className="c-row"><h3>{NETWORK_LABEL[n]}</h3><span className={`pill ${acc?.connected ? 'ok' : ''}`}>{acc?.connected ? 'Conectado' : app?.configured ? 'Pronto para conectar' : 'Configurar'}</span></div>
+      <div className="c-row"><h3>{NETWORK_LABEL[n]}</h3><span className={`pill ${acc?.connected ? 'ok' : ''}`}>{acc?.connected ? `Conectado${acc.via === 'rapida' ? ' ⚡' : ''}` : quick || app?.configured ? 'Pronto para conectar' : 'Desconectado'}</span></div>
       {acc?.connected && (
         <>
           <p><b>{acc.name}</b> {acc.handle && <span className="hint">@{acc.handle.replace(/^@/, '')}</span>}{acc.followers != null && <span className="hint"> · {acc.followers.toLocaleString('pt-BR')} seguidores</span>}</p>
@@ -168,7 +205,15 @@ function NetworkCard({ n, status, app, notify, reload }: { n: Network; status: S
           <div className="row"><button className="btn small ghost" onClick={disconnect}>Desconectar</button><button className="btn small ghost" onClick={connect}>Reconectar</button></div>
         </>
       )}
-      {!acc?.connected && app?.configured && !editing && (
+      {!acc?.connected && !advanced && (
+        quick ? (
+          <>
+            <button className="btn primary connect-big" onClick={quickConnect}>Conectar {NETWORK_LABEL[n]}</button>
+            <p className="hint">Abre a página oficial do {NETWORK_LABEL[n]}: entre com a conta do perfil e autorize. A Central nunca vê a sua senha.</p>
+          </>
+        ) : app?.configured ? null : <p className="hint">Ative a <b>conexão rápida</b> acima para conectar com um toque.</p>
+      )}
+      {!acc?.connected && app?.configured && !editing && (advanced || !quick) && (
         <>
           <button className="btn primary" onClick={connect}>Conectar {NETWORK_LABEL[n]}</button>
           <p className="hint">Você vai entrar na página oficial do {NETWORK_LABEL[n]} e autorizar. A Central nunca vê a sua senha.</p>
@@ -187,6 +232,7 @@ function NetworkCard({ n, status, app, notify, reload }: { n: Network; status: S
           </div>
         </>
       )}
+      {!acc?.connected && <button className="btn small ghost adv" onClick={() => setAdvanced(!advanced)}>{advanced ? 'Voltar para a conexão rápida' : 'Usar app próprio (avançado)'}</button>}
       {!app && <div className="spinner" />}
     </div>
   );

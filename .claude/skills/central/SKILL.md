@@ -26,6 +26,8 @@ description: Conecta o Claude à Central do Set (servidor próprio do perfil Lui
 | Legendas por rede (com filtro de hashtags) | `POST /api/captions` `{"text","format","source","priorityTags"}` | ler |
 | Publicar | `POST /api/uploads` → PUT do arquivo na `uploadUrl` → `POST /api/posts` | publicar |
 
+Contas conectadas pela ⚡ conexão rápida (Zernio) funcionam igual pelas mesmas rotas: a Central escolhe o caminho sozinha.
+
 **Nunca** tente rotas de contas, chaves de app, senhas ou chaves do Claude: são só do app, e a chave do Claude recebe 403 de propósito.
 
 ## Regras

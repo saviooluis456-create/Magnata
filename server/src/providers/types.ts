@@ -3,7 +3,7 @@ import type { Account, Token } from '../db';
 import type { Env } from '../env';
 
 export interface Connected { token: Token; remoteId: string; name?: string; handle?: string }
-export interface PublishResult { status: 'publicado' | 'privado'; remoteId?: string; url?: string; note?: string }
+export interface PublishResult { status: 'publicado' | 'privado'; remoteId?: string; providerPostId?: string; url?: string; note?: string }
 
 export interface Provider {
   network: Network;
@@ -17,7 +17,7 @@ export interface Provider {
   /** Comments on the account's recent videos. Empty when the platform offers no comment API. */
   comments(env: Env, acc: Account): Promise<Omit<CommentItem, 'status'>[]>;
   reply(env: Env, acc: Account, c: CommentItem, text: string): Promise<void>;
-  metrics(env: Env, acc: Account, items: { postId: string; remoteId: string }[]): Promise<MetricRow[]>;
+  metrics(env: Env, acc: Account, items: { postId: string; remoteId: string; providerPostId?: string }[]): Promise<MetricRow[]>;
   publicPosting(env: Env): boolean;
 }
 

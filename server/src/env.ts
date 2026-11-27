@@ -24,4 +24,8 @@ export interface Env {
   TIKTOK_CLIENT_KEY?: string;
   TIKTOK_CLIENT_SECRET?: string;
   ANTHROPIC_API_KEY?: string;
+  /** Zernio API key (quick connection). Usually typed in the Central instead. */
+  ZERNIO_API_KEY?: string;
+  /** Only for local tests (mock server). */
+  ZERNIO_API_BASE?: string;
 }

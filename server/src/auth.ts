@@ -125,6 +125,12 @@ export async function deleteAppCreds(env: Env, network: Network) {
   await env.DB.prepare('DELETE FROM settings WHERE key = ?1').bind(`app_${network}`).run();
 }
 
+export async function saveZernioKey(env: Env, key: string | null) {
+  if (key === null) { await env.DB.prepare("DELETE FROM settings WHERE key IN ('zernio_key', 'zernio_profile')").run(); return; }
+  if (!/^sk_[A-Za-z0-9]{20,}$/.test(key.trim())) throw new HttpError(400, 'Essa não parece uma chave do Zernio (começa com sk_).');
+  await setSetting(env, 'zernio_key', await encrypt(env, key.trim()));
+}
+
 /** Returns env with app credentials from the database filled in, and API_URL/APP_URL derived when not set. */
 export async function resolveEnv(env: Env, origin?: string): Promise<Env> {
   const over: Record<string, string> = {};
@@ -139,6 +145,10 @@ export async function resolveEnv(env: Env, origin?: string): Promise<Env> {
       over[idKey] = c.id;
       over[secretKey] = c.secret;
     } catch { /* TOKEN_KEY changed: credentials must be typed again */ }
+  }
+  if (!env.ZERNIO_API_KEY) {
+    const zk = await getSetting<string>(env, 'zernio_key');
+    if (zk) { try { over.ZERNIO_API_KEY = await decrypt<string>(env, zk); } catch { /* re-type the key */ } }
   }
   const isPlaceholder = (u?: string) => !u || /SEU-|SUA-/i.test(u);
   if (origin) {

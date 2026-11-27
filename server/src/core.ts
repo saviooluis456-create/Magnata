@@ -8,26 +8,30 @@ import { instagram } from './providers/instagram';
 import { tiktok } from './providers/tiktok';
 import type { Provider } from './providers/types';
 import { youtube } from './providers/youtube';
+import { ZERNIO } from './providers/zernio';
 import { HttpError, now } from './util';
 
 export const PROVIDERS: Record<Network, Provider> = { instagram, tiktok, youtube };
+
+/** The account decides the provider: quick connection (Zernio) or own developer app. */
+export const providerFor = (acc: db.Account): Provider => (acc.token.via === 'zernio' ? ZERNIO[acc.network] : PROVIDERS[acc.network]);
+const usable = (env: Env, acc: db.Account | null): acc is db.Account => !!acc && providerFor(acc).configured(env);
 
 /** Loads the account and refreshes its token when needed. */
 export async function account(env: Env, network: Network): Promise<db.Account> {
   const acc = await db.getAccount(env, network);
   if (!acc) throw new HttpError(400, `Conta do ${NETWORK_LABEL[network]} não conectada. Conecte na aba Contas.`);
-  const fresh = await PROVIDERS[network].refresh(env, acc.token);
+  const fresh = await providerFor(acc).refresh(env, acc.token);
   if (fresh) { acc.token = fresh; await db.saveAccount(env, acc); }
   return acc;
 }
 
 export async function statuses(env: Env): Promise<AccountStatus[]> {
   return Promise.all(NETWORKS.map(async (n) => {
-    const p = PROVIDERS[n];
-    const base: AccountStatus = { network: n, connected: false, publicPosting: p.publicPosting(env) };
-    if (!p.configured(env)) return base;
     const acc = await db.getAccount(env, n);
-    if (!acc) return base;
+    const p = acc ? providerFor(acc) : PROVIDERS[n];
+    const base: AccountStatus = { network: n, connected: false, publicPosting: p.publicPosting(env), via: acc?.token.via === 'zernio' ? 'rapida' : acc ? 'oficial' : undefined };
+    if (!acc || !p.configured(env)) return base;
     try {
       const a = await account(env, n);
       const prof = await p.profile(env, a);
@@ -46,8 +50,8 @@ export async function publishPost(env: Env, post: Post): Promise<Post> {
   await Promise.all(todo.map(async (t) => {
     try {
       const acc = await account(env, t.network);
-      const r = await PROVIDERS[t.network].publish(env, acc, post);
-      Object.assign(t, { status: r.status, remoteId: r.remoteId, url: r.url, error: r.note, publishedAt: now() });
+      const r = await providerFor(acc).publish(env, acc, post);
+      Object.assign(t, { status: r.status, remoteId: r.remoteId, providerPostId: r.providerPostId, url: r.url, error: r.note, publishedAt: now() });
     } catch (e) {
       t.status = 'erro';
       t.error = (e as Error).message;
@@ -72,9 +76,9 @@ export async function syncComments(env: Env): Promise<{ novos: number; respondid
 
   let novos = 0, respondidos = 0, drafted = 0;
   for (const n of NETWORKS) {
-    if (!PROVIDERS[n].configured(env) || !(await db.getAccount(env, n))) continue;
+    if (!usable(env, await db.getAccount(env, n))) continue;
     const acc = await account(env, n);
-    const items = await PROVIDERS[n].comments(env, acc).catch(() => []);
+    const items = await providerFor(acc).comments(env, acc).catch(() => []);
     for (const raw of items.sort((a, b) => a.createdAt - b.createdAt)) {
       const post = byRemote.get(`${n}:${raw.mediaRemoteId}`);
       const c: CommentItem = { ...raw, postId: post?.id, status: 'novo' };
@@ -90,7 +94,7 @@ export async function syncComments(env: Env): Promise<{ novos: number; respondid
       if (!c.draft) c.status = d.kind === 'spam' ? 'ignorado' : 'revisar';
       else if (settings.replyMode === 'automatico' && AUTO_SAFE.includes(d.kind) && respondidos < 15) {
         try {
-          await PROVIDERS[n].reply(env, acc, c, c.draft);
+          await providerFor(acc).reply(env, acc, c, c.draft);
           Object.assign(c, { status: 'respondido', replyText: c.draft, repliedAt: now() });
           respondidos++;
         } catch { c.status = 'rascunho'; }
@@ -107,7 +111,7 @@ export async function replyComment(env: Env, id: string, text: string): Promise<
   const msg = text.trim();
   if (!msg) throw new HttpError(400, 'Resposta vazia.');
   const acc = await account(env, c.network);
-  await PROVIDERS[c.network].reply(env, acc, c, msg);
+  await providerFor(acc).reply(env, acc, c, msg);
   Object.assign(c, { status: 'respondido', replyText: msg, repliedAt: now() });
   await db.upsertComment(env, c, false);
   return c;
@@ -118,11 +122,11 @@ export async function syncMetrics(env: Env): Promise<number> {
   const posts = await db.listPosts(env, 200);
   let count = 0;
   for (const n of NETWORKS) {
-    if (!PROVIDERS[n].configured(env) || !(await db.getAccount(env, n))) continue;
-    const items = posts.flatMap((p) => p.targets.filter((t) => t.network === n && t.remoteId).map((t) => ({ postId: p.id, remoteId: t.remoteId! })));
+    if (!usable(env, await db.getAccount(env, n))) continue;
+    const items = posts.flatMap((p) => p.targets.filter((t) => t.network === n && (t.remoteId || t.providerPostId)).map((t) => ({ postId: p.id, remoteId: t.remoteId ?? '', providerPostId: t.providerPostId })));
     if (!items.length) continue;
     const acc = await account(env, n);
-    const rows = await PROVIDERS[n].metrics(env, acc, items).catch(() => []);
+    const rows = await providerFor(acc).metrics(env, acc, items).catch(() => []);
     for (const r of rows) {
       await db.saveMetric(env, r);
       const post = posts.find((p) => p.id === r.postId);
