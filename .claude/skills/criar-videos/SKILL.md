@@ -11,6 +11,9 @@ description: Cria os roteiros completos (curtos para TikTok/Reels/Shorts e/ou v�
 3. `perfil-entretenimento/02-identidade-visual.md` (seções 5 e 6: edição e voz)
 4. `perfil-entretenimento/06-pilares-e-rotina.md` (seção 5: regras éticas/jurídicas)
 
+## 0. Gosto do Luiz (sempre)
+Prefira pautas de **polêmica, bastidores, anúncios e histórias reais com pessoas ou personagens no centro** (`06-pilares-e-rotina.md`, seção 0). Se a pauta do dia só tiver estreia ou teoria, procure o ângulo humano: quem brigou, quem saiu, o que aconteceu nos bastidores, qual a história real. Evite teoria de franquia como vídeo principal.
+
 ## 1. Definir o que criar
 - "para amanhã" → data = amanhã. "os vídeos" = vídeo principal + vídeo 2 (e o longo, se amanhã for domingo ou dia de longo no calendário). "um vídeo" = só o principal.
 - Procure `perfil-entretenimento/pautas/<data>.md`. **Se não existir ou tiver mais de 24h**, rode primeiro o fluxo da skill `pesquisar` para essa data.

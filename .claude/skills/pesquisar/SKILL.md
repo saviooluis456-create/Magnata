@@ -41,6 +41,8 @@ Faça **no mínimo 12 buscas**, cobrindo todas as frentes. Use `WebSearch` e, pa
 Para cada pauta candidata (mínimo 10), dê notas 0-5:
 - **A** Atualidade · **C** Volume de conversa · **P** Encaixe no perfil · **H** Potencial de história · **E** Imagens disponíveis · **R** Risco (jurídico, spoiler, boato)
 - **Total = A×2 + C×2 + P + H + E − R**
+- **Gosto do Luiz (`06-pilares-e-rotina.md`, seção 0):** some **+3** se a pauta é polêmica, bastidor, anúncio ou história real **com uma pessoa ou personagem no centro**. Tire **−3** se for só estreia, trailer, bilheteria ou teoria de franquia sem ângulo de gente.
+- Na busca, cubra sempre: declarações e tretas de atores e diretores, brigas de estúdio, cancelamentos e saídas de elenco, histórias reais que inspiraram filmes e séries, e bastidores revelados em entrevistas.
 
 ## 4. Saída
 Salve em `perfil-entretenimento/pautas/AAAA-MM-DD.md` usando `perfil-entretenimento/templates/pauta-diaria.md`. Inclua:
