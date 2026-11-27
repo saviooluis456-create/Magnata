@@ -15,6 +15,11 @@ Plataformas: **TikTok, Instagram (Reels + carrossel), YouTube Shorts e YouTube v
 | **`crie os vídeos para amanhã`** / **`crie um vídeo para amanhã`** / "crie o vídeo sobre X" | Usa a pauta do dia (ou pesquisa antes, se não existir), escolhe os melhores temas e escreve os roteiros completos no padrão, com legendas para cada rede, texto de capa e fontes. Salva em `roteiros/AAAA-MM-DD/`. |
 | **`planejar o mês`** / "planejar janeiro" | Gera um calendário mensal novo no formato de `05-calendario-dezembro-2026.md`. |
 | **`roteiro longo sobre X`** | Roteiro de vídeo longo para o YouTube (12 a 20 min) no padrão de `03-padrao-roteiro.md`. |
+| **`publicar`** / **`responder comentários`** / **`métricas`** | Pelo Windsor.ai, direto no chat (sempre com sua confirmação antes de publicar ou responder). Único caminho para comentários do TikTok. |
+
+## Central do Set (plataforma de publicação)
+
+No Magnata Studio, botão **🎬 Central do Set**: publica o mesmo vídeo em Instagram Reels, TikTok e YouTube (Shorts ou longo, detectado sozinho), com legenda adaptada por rede, filtro de hashtags, checagem de qualidade máxima, agendamento, respostas a comentários com IA e painel de métricas. Código em `src/central/` (app) e `server/` (servidor). Instalação: `server/LEIA-ME.md`.
 
 As regras desses comandos ficam em `.claude/skills/pesquisar/` e `.claude/skills/criar-videos/`, então funcionam em qualquer sessão nova aberta neste repositório.
 

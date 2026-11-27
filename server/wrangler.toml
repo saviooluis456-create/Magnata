@@ -1,0 +1,37 @@
+name = "central-do-set"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Every 15 minutes: publish scheduled posts, sync comments, draft/auto-send replies, refresh metrics.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "central-do-set"
+database_id = "COLE_AQUI_O_ID_DO_D1"   # saída de: npx wrangler d1 create central-do-set
+
+[[r2_buckets]]
+binding = "VIDEOS"
+bucket_name = "central-do-set-videos"
+
+[vars]
+# URL onde a Central do Set (o app) está aberta. Usada para CORS e para voltar depois de conectar uma conta.
+APP_URL = "https://SEU-USUARIO.github.io/Magnata/"
+# URL pública deste Worker (aparece depois do primeiro deploy). Usada nos redirecionamentos de login.
+API_URL = "https://central-do-set.SEU-SUBDOMINIO.workers.dev"
+R2_ACCOUNT_ID = "COLE_AQUI_O_ACCOUNT_ID_DA_CLOUDFLARE"
+R2_BUCKET = "central-do-set-videos"
+# Só mude para "true" depois que o TikTok aprovar o app para posts públicos (auditoria).
+TIKTOK_PUBLIC = "false"
+AI_MODEL = "claude-opus-5-5"
+
+# Segredos (NUNCA neste arquivo). Configure com: npx wrangler secret put NOME
+# ADMIN_TOKEN            senha longa que o app usa para falar com este Worker
+# TOKEN_KEY              chave para criptografar os tokens das redes (gere com: openssl rand -base64 32)
+# R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY   token de API do R2 (leitura e escrita no bucket)
+# IG_APP_ID / IG_APP_SECRET                 app do Instagram (developers.facebook.com)
+# GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   OAuth do Google Cloud (YouTube)
+# TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET  app do TikTok for Developers
+# ANTHROPIC_API_KEY                          respostas de comentários com IA

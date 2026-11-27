@@ -63,6 +63,7 @@ export default function Home() {
     <div className="home">
       <div className="home-head">
         <div className="logo"><div className="logo-mark">M</div>Magnata Studio</div>
+        <button className="btn small central-entry" onClick={() => { location.hash = 'central'; }} data-testid="open-central">🎬 Central do Set</button>
       </div>
       <div className="hero">
         <h1>Crie vídeos incríveis</h1>

@@ -5,6 +5,7 @@ import type { ExportSettings } from '../../model/types';
 import { useEditor } from '../../store/editor';
 import { canShareFiles, downloadBlob, isIOS, saveToGallery, session, shareBlob } from '../actions';
 import { Chips, Section, Toggle } from '../components/ui';
+import { handoff } from '../../central/videoMeta';
 
 const KEY = 'magnata.export';
 function loadSettings(): ExportSettings {
@@ -104,6 +105,10 @@ export function ExportPanel() {
           <button className="btn" onClick={async () => { if (!(await shareBlob(result.blob, result.filename))) downloadBlob(result.blob, result.filename); }}>Compartilhar</button>
           <button className="btn" onClick={() => downloadBlob(result.blob, result.filename)} data-testid="download">Baixar arquivo</button>
         </div>
+        <button className="btn block central-entry" style={{ marginTop: 10 }} data-testid="publish-central"
+          onClick={() => { handoff.video = { blob: result.blob, name: result.filename }; location.hash = 'central'; }}>
+          🎬 Publicar na Central (Instagram, TikTok, YouTube)
+        </button>
         <button className="btn ghost block" style={{ marginTop: 10 }} onClick={() => { setResult(null); URL.revokeObjectURL(url); setUrl(null); }}>Exportar novamente</button>
       </div>
     );
