@@ -6,8 +6,6 @@
 | Duração estimada | [X min] ([N] palavras ÷ 150) |
 | Publicar | [data] |
 | Gancho com o presente | [estreia/notícia que justifica o vídeo agora] |
-| Tipo de gancho | [...] |
-| Experimento / Variante | [id / variante, ou "nenhum"] |
 
 ## Títulos (5 opções para teste)
 1. ...

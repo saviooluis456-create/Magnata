@@ -6,7 +6,6 @@ description: Cria os roteiros completos (curtos para TikTok/Reels/Shorts e/ou v�
 # Criar vídeos
 
 **Leia antes, sempre:**
-0. `perfil-entretenimento/08-playbook.md`: as regras **ativas** valem mais que qualquer outro arquivo. Regras **em teste** e **experimentos ativos** definem a variante de cada roteiro.
 1. `perfil-entretenimento/03-padrao-roteiro.md` (estruturas, banco de ganchos, regras, checklist)
 2. `perfil-entretenimento/04-legendas-e-hashtags.md`
 3. `perfil-entretenimento/02-identidade-visual.md` (seções 5 e 6: edição e voz)
@@ -32,11 +31,6 @@ Escolha **o ângulo mais surpreendente** que seja verdadeiro. Escreva 3 opções
 - Longo: `perfil-entretenimento/templates/roteiro-longo.md` (150 palavras/min), com capítulos, retomadas, marcações `[IMAGEM]` e `[CORTE]`, 5 títulos e descrição.
 - Inclua: roteiro em tabela (tempo, locução, texto na tela, imagem, som), locução corrida, capa, legendas de Instagram/TikTok/YouTube, notas de edição para o Magnata Studio, fontes com links.
 - Passe o **checklist** da seção 5 do padrão e marque cada item.
-
-## 3b. Experimentos
-- Se houver experimento ativo que caiba no vídeo, aplique a variante com menos vídeos até agora (conte os roteiros já marcados em `roteiros/`). Mude **só** o que o experimento testa.
-- No cabeçalho do roteiro, preencha `Tipo de gancho`, `Experimento` e `Variante`. Sem isso, a análise não aprende com o vídeo.
-- Na Central do Set, ao publicar, escolha o mesmo experimento e a mesma variante.
 
 ## 4. Salvar
 `perfil-entretenimento/roteiros/AAAA-MM-DD/<numero>-<slug>.md` (ex.: `01-duna-parte-tres-guia.md`).
