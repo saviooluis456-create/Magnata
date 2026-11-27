@@ -6,15 +6,19 @@
 
 ## 1. Nome do perfil (sugestões)
 
-Verifique disponibilidade do @ nas 3 redes antes de decidir.
+Domínios checados em 27/11/2026 (RDAP do Registro.br e da Verisign). O @ nas redes precisa ser conferido à mão.
+Primeiras ideias descartadas porque os domínios já tinham dono: Fora de Cena, Corte Final, Sala Escura, Cena do Crime, Quarta Parede.
 
-| Nome | Por que funciona |
-|---|---|
-| **Fora de Cena** | Cobre bastidores, crime real e notícia; curto e fácil de falar. |
-| **Corte Final** | Termo de cinema, soa como "a palavra final" sobre o assunto. |
-| **Sala Escura** | Remete ao cinema e ao lado sombrio (crime). |
-| **Claquete** | Curto, visual, vira ícone fácil. |
-| **Bastidor News** | Explícito sobre o que é; bom para busca. |
+| @ | Nome | .com.br | .com | Por que funciona |
+|---|---|---|---|---|
+| **@telaescura** | Tela Escura | livre | livre | Cinema (tela) + lado sombrio (crime). Combina com o conceito "jornal da sala escura". |
+| **@atrasdacena** | Atrás da Cena | livre | livre | Bastidores puros; fala bem em voz alta. |
+| **@cinedossie** | CineDossiê | livre | livre | Investigação + cinema; ótimo para crime real e notícia. |
+| **@cenasecreta** | Cena Secreta | livre | livre | Curiosidade e mistério no nome. |
+| **@luzapagada** | Luz Apagada | livre | livre | O momento em que o filme começa. Também soa sombrio. |
+| **@foradoroteiro** | Fora do Roteiro | livre | ocupado | Bastidores e o que a vida real fez fora do script. |
+| **@bastidorpop** | Bastidor Pop | livre | livre | Explícito, bom para busca. |
+| **@sessaodocrime** | Sessão do Crime | livre | livre | Forte para crime real, mas estreita o perfil. |
 
 Use **o mesmo @ e o mesmo nome em todas as redes**. Bio com palavras-chave: *"Filmes, séries, crimes reais e bastidores. Notícias todo dia."*
 
