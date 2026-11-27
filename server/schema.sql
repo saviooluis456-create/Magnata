@@ -46,3 +46,46 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- ---------- Inteligência ----------
+CREATE TABLE IF NOT EXISTS snapshots (
+  network TEXT NOT NULL,
+  remote_id TEXT NOT NULL,
+  post_id TEXT,
+  age_hours REAL NOT NULL,
+  views INTEGER NOT NULL,
+  captured_at INTEGER NOT NULL,
+  PRIMARY KEY (network, remote_id, captured_at)
+);
+
+CREATE TABLE IF NOT EXISTS experiments (
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL,
+  data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS playbook (
+  version INTEGER PRIMARY KEY AUTOINCREMENT,
+  created_at INTEGER NOT NULL,
+  data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+  id TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL,
+  data TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bench_channels (
+  channel_id TEXT PRIMARY KEY,
+  title TEXT,
+  handle TEXT,
+  added_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bench_videos (
+  id TEXT PRIMARY KEY,
+  channel_id TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  data TEXT NOT NULL
+);

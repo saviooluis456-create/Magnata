@@ -3,13 +3,14 @@ import { Icon } from '../../ui/components/ui';
 import { api, getConfig, type StatusResponse } from '../api';
 import { Accounts } from './Accounts';
 import { Comments } from './Comments';
+import { Intel } from './Intel';
 import { Metrics } from './Metrics';
 import { Publish } from './Publish';
 import { Queue } from './Queue';
 
 export type Notify = (msg: string, kind?: 'info' | 'ok' | 'error') => void;
-type Tab = 'publicar' | 'fila' | 'comentarios' | 'metricas' | 'contas';
-const TABS: [Tab, string][] = [['publicar', 'Publicar'], ['fila', 'Fila'], ['comentarios', 'Comentários'], ['metricas', 'Métricas'], ['contas', 'Contas']];
+type Tab = 'publicar' | 'fila' | 'comentarios' | 'metricas' | 'inteligencia' | 'contas';
+const TABS: [Tab, string][] = [['publicar', 'Publicar'], ['fila', 'Fila'], ['comentarios', 'Comentários'], ['metricas', 'Métricas'], ['inteligencia', '🧠 Inteligência'], ['contas', 'Contas']];
 
 export default function Central() {
   const [tab, setTab] = useState<Tab>(getConfig() ? 'publicar' : 'contas');
@@ -53,6 +54,7 @@ export default function Central() {
       {tab === 'fila' && <Queue notify={notify} />}
       {tab === 'comentarios' && <Comments status={status} notify={notify} onSettings={refresh} />}
       {tab === 'metricas' && <Metrics status={status} notify={notify} />}
+      {tab === 'inteligencia' && <Intel notify={notify} />}
       {tab === 'contas' && <Accounts status={status} notify={notify} refresh={refresh} />}
       {toast && <div className={`toast ${toast.kind}`} role="status">{toast.msg}</div>}
     </div>

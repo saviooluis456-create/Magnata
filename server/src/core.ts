@@ -123,7 +123,12 @@ export async function syncMetrics(env: Env): Promise<number> {
     if (!items.length) continue;
     const acc = await account(env, n);
     const rows = await PROVIDERS[n].metrics(env, acc, items).catch(() => []);
-    for (const r of rows) { await db.saveMetric(env, r); count++; }
+    for (const r of rows) {
+      await db.saveMetric(env, r);
+      const post = posts.find((p) => p.id === r.postId);
+      await db.saveSnapshot(env, r, post?.targets.find((t) => t.network === n)?.publishedAt);
+      count++;
+    }
   }
   return count;
 }

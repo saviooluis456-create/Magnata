@@ -47,6 +47,8 @@ export interface Post {
   format: VideoFormat;
   editoria?: Editoria;
   hookType?: string; // gancho used, to learn which hooks work
+  /** A/B test this post belongs to (see core/analytics.ts). */
+  experiment?: { id: string; variant: string };
   objectKey: string; // R2 key of the video file
   coverOffsetMs?: number;
   meta: VideoMeta;

@@ -111,3 +111,17 @@ cp .dev.vars.example .dev.vars   # crie com ADMIN_TOKEN e TOKEN_KEY de teste
 npx wrangler d1 execute central-do-set --local --file=schema.sql
 npx wrangler dev --local --var APP_URL:http://localhost:5173/ --var API_URL:http://localhost:8787
 ```
+
+---
+
+## 🧠 Inteligência (análise e estratégia)
+
+Funciona sozinha depois da instalação:
+- **A cada hora:** guarda um registro das views de cada vídeo (curva de crescimento) e recalcula o **Índice Set** (100 = vídeo típico seu naquela rede e formato).
+- **Sempre que a aba abre:** recalcula o que funciona por editoria, gancho, duração, horário, dia, legenda e hashtags, com encolhimento estatístico, intervalo de 90%, nível de confiança e alerta quando dois fatores andam juntos. Também avalia os testes A/B, descontando a editoria (teste de permutação).
+- **Todo dia (3h):** atualiza os últimos 50 vídeos dos concorrentes que você adicionar (dados públicos do YouTube; precisa do YouTube conectado).
+- **Toda segunda (9h):** o estrategista (Claude, precisa da `ANTHROPIC_API_KEY`) lê tudo, escreve o diagnóstico e as ações da semana, reescreve o playbook (nova versão) e propõe até 3 testes A/B, que você aprova na aba.
+
+Se você instalou antes desta versão, rode de novo `npm run db:init` (só cria as tabelas novas) e `npm run deploy`.
+
+O botão **Copiar para o Claude** (aba Inteligência) copia o playbook atual em texto. Cole no chat e peça `analisar`: o Claude junta com os dados do Windsor e atualiza `perfil-entretenimento/08-playbook.md`, que os roteiros seguem.

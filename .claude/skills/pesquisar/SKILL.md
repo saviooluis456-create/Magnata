@@ -5,7 +5,7 @@ description: Pesquisa intensa de pautas do dia para o perfil de entretenimento (
 
 # Pesquisar: pautas do dia
 
-Antes de começar, leia: `perfil-entretenimento/06-pilares-e-rotina.md` (editorias, grade, regras) e a linha do dia em `perfil-entretenimento/05-calendario-*.md` (o mês atual).
+Antes de começar, leia **`perfil-entretenimento/08-playbook.md` (regras com prioridade sobre tudo, mix de editorias da semana e experimentos ativos)**, `perfil-entretenimento/06-pilares-e-rotina.md` (editorias, grade, regras) e a linha do dia em `perfil-entretenimento/05-calendario-*.md` (o mês atual).
 
 ## 1. Data alvo
 - "pesquisar" = hoje. "pesquisar para amanhã" = amanhã. Use a data atual do sistema.
@@ -41,6 +41,7 @@ Faça **no mínimo 12 buscas**, cobrindo todas as frentes. Use `WebSearch` e, pa
 Para cada pauta candidata (mínimo 10), dê notas 0-5:
 - **A** Atualidade · **C** Volume de conversa · **P** Encaixe no perfil · **H** Potencial de história · **E** Imagens disponíveis · **R** Risco (jurídico, spoiler, boato)
 - **Total = A×2 + C×2 + P + H + E − R**
+- Some +2 nas pautas da editoria que o playbook manda reforçar nesta semana e −1 nas que ele manda reduzir.
 
 ## 4. Saída
 Salve em `perfil-entretenimento/pautas/AAAA-MM-DD.md` usando `perfil-entretenimento/templates/pauta-diaria.md`. Inclua:

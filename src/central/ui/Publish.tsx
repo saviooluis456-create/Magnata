@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chips } from '../../ui/components/ui';
 import { api, getConfig, type StatusResponse } from '../api';
+import { nextVariant, type Experiment, type Perf } from '../core/analytics';
 import { buildCaptions } from '../core/captions';
 import { cleanTag, suggestHashtags } from '../core/hashtags';
 import { checkVideo, detectFormat, formatBytes, recommendedExport } from '../core/quality';
@@ -28,6 +29,12 @@ export function Publish({ status, notify, onDone }: { status: StatusResponse | n
   const [progress, setProgress] = useState<{ phase: string; p?: number } | null>(null);
   const [result, setResult] = useState<Post | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [exps, setExps] = useState<{ list: Experiment[]; perfs: Perf[] }>({ list: [], perfs: [] });
+  const [exp, setExp] = useState<{ id: string; variant: string } | null>(null);
+  useEffect(() => {
+    if (!getConfig()) return;
+    api.intel().then((d) => setExps({ list: d.experiments.filter((e) => e.status === 'ativo'), perfs: d.perfs })).catch(() => {});
+  }, []);
 
   useEffect(() => { if (handoff.video) { pick(handoff.video.blob, handoff.video.name); handoff.video = null; } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
@@ -78,7 +85,7 @@ export function Publish({ status, notify, onDone }: { status: StatusResponse | n
       setProgress({ phase: 'Enviando o vídeo original (sem perder qualidade)…', p: 0 });
       const objectKey = await api.upload(file.blob, file.name, (p) => setProgress({ phase: 'Enviando o vídeo original (sem perder qualidade)…', p }));
       setProgress({ phase: scheduledAt ? 'Agendando…' : 'Publicando nas redes… (o Instagram leva alguns minutos para processar)' });
-      const post = await api.createPost({ objectKey, meta, networks: nets, captions, scheduledAt, editoria, hookType: hookType || undefined, coverOffsetMs: cover != null ? cover * 1000 : undefined });
+      const post = await api.createPost({ objectKey, meta, networks: nets, captions, scheduledAt, editoria, hookType: hookType || undefined, coverOffsetMs: cover != null ? cover * 1000 : undefined, experiment: exp ?? undefined });
       setResult(post);
       const ok = post.targets.filter((t) => t.status === 'publicado' || t.status === 'privado' || t.status === 'agendado').length;
       notify(scheduledAt ? 'Agendado!' : `${ok} de ${post.targets.length} redes concluídas`, ok === post.targets.length ? 'ok' : 'error');
@@ -164,6 +171,19 @@ export function Publish({ status, notify, onDone }: { status: StatusResponse | n
           <label className="c-field"><span>Tipo de gancho (opcional)</span><input value={hookType} onChange={(e) => setHookType(e.target.value)} placeholder="ex.: 'caso real inspirou'" /></label>
         </div>
         <button className="btn small" onClick={suggest}># Sugerir hashtags</button>
+        {exps.list.length > 0 && (
+          <div className="exp-pick">
+            <span className="hint">🧪 Este vídeo faz parte de um teste A/B?</span>
+            <Chips options={[{ v: '', label: 'Não' }, ...exps.list.map((e) => ({ v: e.id, label: e.name }))]} value={exp?.id ?? ''} scroll
+              onChange={(id) => { const e = exps.list.find((x) => x.id === id); setExp(e ? { id: e.id, variant: nextVariant(e, exps.perfs) } : null); }} />
+            {exp && (() => { const e = exps.list.find((x) => x.id === exp.id)!; return (
+              <>
+                <p className="warn">Use a variante <b>{exp.variant}</b> neste vídeo (mantém os grupos equilibrados).</p>
+                <Chips options={e.variants.map((v) => ({ v, label: v }))} value={exp.variant} onChange={(v) => setExp({ id: e.id, variant: v })} />
+              </>
+            ); })()}
+          </div>
+        )}
         {built.warnings.map((w, i) => <p key={i} className="warn">⚠️ {w}</p>)}
         {NETWORKS.filter((n) => nets.includes(n)).map((n) => {
           const removed = built.removed[n];

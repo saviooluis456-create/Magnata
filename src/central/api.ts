@@ -1,4 +1,6 @@
 // Client for the Central do Set API (Cloudflare Worker in /server).
+import type { Experiment } from './core/analytics';
+import type { IntelPayload, StrategyReport } from './core/intel-types';
 import type { AccountStatus, CommentItem, Editoria, MetricRow, Network, NetworkCaption, Post, Settings, VideoMeta } from './core/types';
 
 const KEY = 'central.config';
@@ -34,7 +36,7 @@ export const api = {
   connect: (n: Network) => call<{ url: string }>(`/api/oauth/${n}/start`, { method: 'POST' }),
   disconnect: (n: Network) => call(`/api/accounts/${n}`, { method: 'DELETE' }),
   posts: () => call<Post[]>('/api/posts'),
-  createPost: (b: { objectKey: string; meta: VideoMeta; networks: Network[]; captions: NetworkCaption; scheduledAt?: number; editoria?: Editoria; hookType?: string; coverOffsetMs?: number }) =>
+  createPost: (b: { objectKey: string; meta: VideoMeta; networks: Network[]; captions: NetworkCaption; scheduledAt?: number; editoria?: Editoria; hookType?: string; coverOffsetMs?: number; experiment?: { id: string; variant: string } }) =>
     call<Post>('/api/posts', { method: 'POST', body: JSON.stringify(b) }),
   retry: (id: string) => call<Post>(`/api/posts/${id}/publish`, { method: 'POST' }),
   deletePost: (id: string) => call(`/api/posts/${id}`, { method: 'DELETE' }),
@@ -44,6 +46,21 @@ export const api = {
   ignore: (id: string) => call<CommentItem>(`/api/comments/${encodeURIComponent(id)}/ignore`, { method: 'POST' }),
   metrics: () => call<{ rows: MetricRow[]; posts: Post[] }>('/api/metrics'),
   syncMetrics: () => call<{ updated: number }>('/api/metrics/sync', { method: 'POST' }),
+  intel: () => call<IntelPayload>('/api/intel'),
+  report: () => call<StrategyReport>('/api/intel/report', { method: 'POST' }),
+  async playbookMd(): Promise<string> {
+    const c = getConfig();
+    if (!c) throw new Error('Configure o servidor.');
+    const r = await fetch(c.apiUrl + '/api/intel/playbook.md', { headers: { Authorization: `Bearer ${c.token}` } });
+    if (!r.ok) throw new Error(`Erro ${r.status}`);
+    return r.text();
+  },
+  createExperiment: (b: { name: string; hypothesis: string; dimension: string; variants: string[]; minPerVariant?: number }) =>
+    call<Experiment>('/api/experiments', { method: 'POST', body: JSON.stringify(b) }),
+  setExperiment: (id: string, status: 'ativo' | 'concluido' | 'descartado') => call<Experiment>(`/api/experiments/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  addBench: (handle: string) => call<{ channelId: string; title: string }>('/api/bench', { method: 'POST', body: JSON.stringify({ handle }) }),
+  removeBench: (id: string) => call(`/api/bench/${id}`, { method: 'DELETE' }),
+  syncBench: () => call<{ videos: number }>('/api/bench/sync', { method: 'POST' }),
 
   /** Uploads the original file straight to storage (no recompression), with progress. */
   async upload(file: Blob, name: string, onProgress: (p: number) => void): Promise<string> {

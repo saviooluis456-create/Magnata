@@ -352,3 +352,32 @@ select.field { appearance: none; }
 .m-sum { grid-column: 2; grid-row: 1; text-align: right; display: flex; flex-direction: column; }
 .m-sum small { color: var(--muted); font-size: 11px; }
 .central .chips button.on { border-color: var(--amber); background: #F5B82E22; color: var(--amber); }
+/* Inteligência */
+.central .up { color: #2EBD85; } .central .down { color: #f87171; }
+.intel-hero { border-color: #F5B82E55; background: linear-gradient(180deg, #F5B82E10, var(--bg2) 40%); }
+.intel-summary { margin: 0; font-size: 15px; line-height: 1.5; user-select: text; }
+.c-card h4 { margin: 8px 0 2px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.diag { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; display: flex; flex-direction: column; gap: 2px; }
+.diag small, .acts small, .rule small, .exp small, .bench small { color: var(--muted); font-size: 12px; }
+.diag.imp-alto { border-color: #F5B82E; } .diag.imp-medio { border-color: #8E6CF0; }
+.acts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.acts li { display: flex; flex-direction: column; }
+.insights { display: flex; flex-wrap: wrap; gap: 6px; }
+.insight { font-size: 12px; padding: 5px 9px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.insight.pos b { color: #2EBD85; } .insight.neg b { color: #f87171; }
+.lift-row { display: grid; grid-template-columns: minmax(80px, 34%) 1fr 44px 58px; gap: 8px; align-items: center; font-size: 13px; }
+.div-bar { position: relative; height: 10px; background: var(--bg4); border-radius: 5px; }
+.div-bar::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.div-bar i { position: absolute; top: 0; bottom: 0; border-radius: 5px; }
+.div-bar i.pos { background: #2EBD85; } .div-bar i.neg { background: #f87171; }
+.central .pill.conf-forte { background: #2EBD8522; color: #2EBD85; }
+.central .pill.conf-média, .central .pill.conf-media { background: #F5B82E22; color: #F5B82E; }
+.central .pill.conf-hipotese { background: #3D8BFF22; color: #93c5fd; }
+.c-row.low { opacity: .75; }
+.exp, .rule, .bench { display: flex; flex-direction: column; gap: 3px; padding: 8px 0; border-top: 1px solid var(--line); }
+.exp-descartado { opacity: .5; }
+.exp-form { display: flex; flex-direction: column; gap: 6px; }
+.exp-form input, .row .c-input { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--text); width: 100%; }
+.rule-aposentada b { text-decoration: line-through; color: var(--muted); }
+.exp-pick { border: 1px dashed #F5B82E66; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.confound { grid-column: 1 / -1; color: #fcd34d; font-size: 11px; margin-top: -4px; }

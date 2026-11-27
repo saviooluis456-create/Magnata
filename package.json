@@ -9,7 +9,8 @@
     "preview": "vite preview --host",
     "typecheck": "tsc -b",
     "test": "node tests/run-e2e.mjs",
-    "test:unit": "esbuild tests/unit/*.test.ts --bundle --platform=node --format=esm --outdir=tests/out/unit --log-level=warning && node --test tests/out/unit/*.test.js"
+    "test:unit": "esbuild tests/unit/*.test.ts --bundle --platform=node --format=esm --outdir=tests/out/unit --log-level=warning && node --test tests/out/unit/*.test.js",
+    "analisar": "esbuild scripts/analisar.ts --bundle --platform=node --format=esm --outfile=tests/out/analisar.mjs --log-level=warning && node tests/out/analisar.mjs"
   },
   "dependencies": {
     "@shiguredo/rnnoise-wasm": "^2025.1.5",

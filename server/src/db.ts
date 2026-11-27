@@ -124,3 +124,13 @@ export async function saveSettings(env: Env, s: Settings) {
   await env.DB.prepare("INSERT INTO settings (key, value) VALUES ('settings', ?1) ON CONFLICT(key) DO UPDATE SET value = ?1")
     .bind(JSON.stringify(s)).run();
 }
+
+// ---------- metric history (growth curves, 24h velocity) ----------
+export async function saveSnapshot(env: Env, m: MetricRow, publishedAt: number | undefined) {
+  if (!publishedAt) return;
+  const age = (now() - publishedAt) / 3600_000;
+  if (age > 24 * 30) return; // the first month is what matters for curves
+  await env.DB.prepare('INSERT OR IGNORE INTO snapshots (network, remote_id, post_id, age_hours, views, captured_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
+    .bind(m.network, m.remoteId, m.postId || null, age, m.views, now()).run();
+}
+

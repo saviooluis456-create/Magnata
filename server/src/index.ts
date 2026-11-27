@@ -6,6 +6,7 @@ import { NETWORKS } from '../../src/central/core/types';
 import { PROVIDERS, publishDue, publishPost, replyComment, statuses, syncComments, syncMetrics } from './core';
 import * as db from './db';
 import type { Env } from './env';
+import { addBenchChannel, generateReport, intel, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
 import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
 import { corsHeaders, HttpError, json, now, requireAdmin, uid } from './util';
 
@@ -20,6 +21,7 @@ interface CreatePostBody {
   editoria?: Editoria;
   hookType?: string;
   coverOffsetMs?: number;
+  experiment?: { id: string; variant: string };
 }
 
 async function route(req: Request, env: Env): Promise<Response> {
@@ -136,6 +138,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     const post: Post = {
       id: uid('post_'), createdAt: now(), scheduledAt: scheduled, format, editoria: b.editoria, hookType: b.hookType,
       objectKey: b.objectKey, coverOffsetMs: b.coverOffsetMs, meta: b.meta, captions: b.captions,
+      experiment: b.experiment?.id && b.experiment.variant ? { id: b.experiment.id, variant: b.experiment.variant } : undefined,
       targets: networks.map((network) => ({ network, status: scheduled ? 'agendado' : 'pendente' })),
     };
     await db.savePost(env, post);
@@ -175,6 +178,36 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/api/metrics' && m === 'GET') return json(env, { rows: await db.listMetrics(env), posts: await db.listPosts(env, 200) });
   if (path === '/api/metrics/sync' && m === 'POST') return json(env, { updated: await syncMetrics(env) });
 
+  // ---------- inteligência ----------
+  if (path === '/api/intel' && m === 'GET') return json(env, await intel(env));
+  if (path === '/api/intel/report' && m === 'POST') return json(env, await generateReport(env));
+  if (path === '/api/intel/playbook.md' && m === 'GET') {
+    const d = await intel(env);
+    return new Response(playbookMarkdown(d.playbook ?? (await latestPlaybook(env)), d.report), { headers: { 'Content-Type': 'text/markdown; charset=utf-8', ...corsHeaders(env) } });
+  }
+  if (path === '/api/experiments' && m === 'POST') {
+    const b = await body<{ name: string; hypothesis: string; dimension: string; variants: string[]; minPerVariant?: number }>();
+    const variants = (b.variants ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 3);
+    if (!b.name?.trim() || variants.length < 2) throw new HttpError(400, 'Dê um nome e pelo menos 2 variantes.');
+    const e = { id: uid('exp_'), name: b.name.trim(), hypothesis: (b.hypothesis ?? '').trim(), dimension: (b.dimension ?? '').trim(), variants, status: 'ativo' as const, minPerVariant: Math.max(3, Math.min(10, b.minPerVariant ?? 4)), createdAt: now(), createdBy: 'voce' as const };
+    await saveExperiment(env, e);
+    return json(env, e);
+  }
+  const ex = path.match(/^\/api\/experiments\/([\w]+)$/);
+  if (ex && m === 'PUT') {
+    const { status } = await body<{ status: string }>();
+    if (!['ativo', 'concluido', 'descartado'].includes(status)) throw new HttpError(400, 'Status inválido.');
+    const e = (await listExperiments(env)).find((x) => x.id === ex[1]);
+    if (!e) throw new HttpError(404, 'Experimento não encontrado.');
+    e.status = status as typeof e.status;
+    await saveExperiment(env, e);
+    return json(env, e);
+  }
+  if (path === '/api/bench' && m === 'POST') return json(env, await addBenchChannel(env, (await body<{ handle: string }>()).handle ?? ''));
+  if (path === '/api/bench/sync' && m === 'POST') return json(env, { videos: await syncBench(env) });
+  const bc = path.match(/^\/api\/bench\/([\w-]+)$/);
+  if (bc && m === 'DELETE') { await removeBenchChannel(env, bc[1]); return json(env, { ok: true }); }
+
   throw new HttpError(404, 'Rota não encontrada.');
 }
 
@@ -194,7 +227,11 @@ export default {
       await publishDue(env).catch((e) => console.error('publishDue', e));
       await syncComments(env).catch((e) => console.error('syncComments', e));
       // Metrics every hour is enough (cron runs every 15 min).
-      if (new Date().getUTCMinutes() < 15) await syncMetrics(env).catch((e) => console.error('syncMetrics', e));
+      const d = new Date();
+      if (d.getUTCMinutes() < 15) await syncMetrics(env).catch((e) => console.error('syncMetrics', e));
+      // Competitors once a day (03h BRT); strategy report every Monday 09h BRT.
+      if (d.getUTCHours() === 6 && d.getUTCMinutes() < 15) await syncBench(env).catch((e) => console.error('syncBench', e));
+      if (d.getUTCDay() === 1 && d.getUTCHours() === 12 && d.getUTCMinutes() < 15 && env.ANTHROPIC_API_KEY) await generateReport(env).catch((e) => console.error('report', e));
     })());
   },
 } satisfies ExportedHandler<Env>;

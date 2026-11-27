@@ -7,6 +7,8 @@
 | Duração estimada | [Xs] ([N] palavras ÷ 2,7) |
 | Publicar | [dia e horário sugerido] |
 | Spoiler | [não / sim, a partir de Xs] |
+| Tipo de gancho | [ex.: número, pergunta, caso real inspirou, bastidor proibido] |
+| Experimento / Variante | [id do 08-playbook / A ou B, ou "nenhum"] |
 
 ## Roteiro
 
