@@ -1,0 +1,37 @@
+# Sistema do Perfil de Entretenimento
+
+Perfil sobre **filmes, séries, casos criminais ligados ao entretenimento, bastidores e notícias do dia/semana**.
+Plataformas: **TikTok, Instagram (Reels + carrossel), YouTube Shorts e YouTube vídeo longo**.
+
+> Nome do perfil: **[A DEFINIR]**. Sugestões em `02-identidade-visual.md`.
+
+---
+
+## Como usar (comandos)
+
+| Você escreve | O que acontece |
+|---|---|
+| **`pesquisar`** (ou "pesquisar hoje", "pesquisar para amanhã") | Pesquisa intensa do dia: notícias, estreias, o que está sendo comentado, tendências. Gera `pautas/AAAA-MM-DD.md` com as pautas ranqueadas por nota. |
+| **`crie os vídeos para amanhã`** / **`crie um vídeo para amanhã`** / "crie o vídeo sobre X" | Usa a pauta do dia (ou pesquisa antes, se não existir), escolhe os melhores temas e escreve os roteiros completos no padrão, com legendas para cada rede, texto de capa e fontes. Salva em `roteiros/AAAA-MM-DD/`. |
+| **`planejar o mês`** / "planejar janeiro" | Gera um calendário mensal novo no formato de `05-calendario-dezembro-2026.md`. |
+| **`roteiro longo sobre X`** | Roteiro de vídeo longo para o YouTube (12 a 20 min) no padrão de `03-padrao-roteiro.md`. |
+
+As regras desses comandos ficam em `.claude/skills/pesquisar/` e `.claude/skills/criar-videos/`, então funcionam em qualquer sessão nova aberta neste repositório.
+
+---
+
+## Mapa dos arquivos
+
+| Arquivo | Conteúdo |
+|---|---|
+| `01-pesquisa-base.md` | O que a pesquisa encontrou: referências (Carol Moreira, Omelete, Jovem Nerd, Ei Nerd...), dados de retenção, duração e padrões. |
+| `02-identidade-visual.md` | Nome, paleta, tipografia, selos por editoria, capas, legendas na tela, regras de edição. |
+| `03-padrao-roteiro.md` | **A máquina do roteiro**: estruturas por formato, banco de ganchos, regras de escrita, contagem de palavras. |
+| `04-legendas-e-hashtags.md` | Fórmulas de legenda por rede, SEO social, títulos do YouTube, hashtags. |
+| `05-calendario-dezembro-2026.md` | Planejamento de dezembro dia a dia, com estreias, ângulos e os vídeos longos do mês. |
+| `06-pilares-e-rotina.md` | Editorias, frequência, grade semanal, rotina de produção e regras éticas/jurídicas. |
+| `templates/` | Modelos em branco de pauta, roteiro curto e roteiro longo. |
+| `pautas/` | Saída do comando `pesquisar`. |
+| `roteiros/` | Saída do comando `crie os vídeos`. |
+
+O repositório também tem o **Magnata Studio** (editor de vídeo). Os roteiros indicam estilo de legenda, cortes e efeitos para montar o vídeo nele.
