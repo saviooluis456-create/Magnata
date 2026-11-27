@@ -31,6 +31,7 @@ As regras desses comandos ficam em `.claude/skills/pesquisar/` e `.claude/skills
 | `05-calendario-dezembro-2026.md` | Planejamento de dezembro dia a dia, com estreias, ângulos e os vídeos longos do mês. |
 | `06-pilares-e-rotina.md` | Editorias, frequência, grade semanal, rotina de produção e regras éticas/jurídicas. |
 | `07-criacao-das-contas.md` | Bios prontas, e-mails, segurança e passo a passo para criar as contas. |
+| `08-perfil-nas-redes.md` | **O que colocar no perfil:** nome, bio, link, destaques, fixados, playlists, descrição do canal e ordem dos primeiros posts. |
 | `templates/` | Modelos em branco de pauta, roteiro curto e roteiro longo. |
 | `pautas/` | Saída do comando `pesquisar`. |
 | `roteiros/` | Saída do comando `crie os vídeos`. |
