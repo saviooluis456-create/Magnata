@@ -381,3 +381,13 @@ select.field { appearance: none; }
 .rule-aposentada b { text-decoration: line-through; color: var(--muted); }
 .exp-pick { border: 1px dashed #F5B82E66; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 .confound { grid-column: 1 / -1; color: #fcd34d; font-size: 11px; margin-top: -4px; }
+/* Contas: assistente de conexão */
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.45; }
+.steps a { color: var(--amber); }
+.copybox { display: flex; gap: 6px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 6px 6px 10px; margin-top: 4px; min-width: 0; }
+.copybox code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 12px; color: var(--paper); user-select: all; }
+.central code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.scope { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.scope span { display: flex; flex-direction: column; }
+.scope small { color: var(--muted); font-size: 11px; }
+.claude-card { border-color: #8E6CF055; }

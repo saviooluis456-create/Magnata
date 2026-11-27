@@ -7,6 +7,14 @@ compatibility_flags = ["nodejs_compat"]
 [triggers]
 crons = ["*/15 * * * *"]
 
+# The built app (Magnata Studio + Central do Set) is served from the same address as the API:
+# one link, no CORS, no separate hosting. Build it first with `npm run build` in the repository root.
+[assets]
+directory = "../dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/oauth/*", "/media"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "central-do-set"
@@ -17,10 +25,10 @@ binding = "VIDEOS"
 bucket_name = "central-do-set-videos"
 
 [vars]
-# URL onde a Central do Set (o app) está aberta. Usada para CORS e para voltar depois de conectar uma conta.
-APP_URL = "https://SEU-USUARIO.github.io/Magnata/"
-# URL pública deste Worker (aparece depois do primeiro deploy). Usada nos redirecionamentos de login.
-API_URL = "https://central-do-set.SEU-SUBDOMINIO.workers.dev"
+# Deixe vazios: o endereço é descoberto sozinho (app e API ficam no mesmo endereço).
+# Só preencha se usar um domínio próprio ou abrir o app em outro lugar.
+APP_URL = ""
+API_URL = ""
 R2_ACCOUNT_ID = "COLE_AQUI_O_ACCOUNT_ID_DA_CLOUDFLARE"
 R2_BUCKET = "central-do-set-videos"
 # Só mude para "true" depois que o TikTok aprovar o app para posts públicos (auditoria).
@@ -28,10 +36,8 @@ TIKTOK_PUBLIC = "false"
 AI_MODEL = "claude-opus-5-5"
 
 # Segredos (NUNCA neste arquivo). Configure com: npx wrangler secret put NOME
-# ADMIN_TOKEN            senha longa que o app usa para falar com este Worker
+# SETUP_CODE             código de uso único para criar a senha no primeiro acesso
 # TOKEN_KEY              chave para criptografar os tokens das redes (gere com: openssl rand -base64 32)
 # R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY   token de API do R2 (leitura e escrita no bucket)
-# IG_APP_ID / IG_APP_SECRET                 app do Instagram (developers.facebook.com)
-# GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   OAuth do Google Cloud (YouTube)
-# TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET  app do TikTok for Developers
+# As chaves dos apps do Instagram, YouTube e TikTok são coladas na própria Central (aba Contas).
 # ANTHROPIC_API_KEY                          respostas de comentários com IA

@@ -33,6 +33,12 @@ export default function Central() {
   }, [notify, refresh]);
 
   useEffect(() => {
+    const out = () => { setTab('contas'); setStatus(null); };
+    window.addEventListener('central-logout', out);
+    return () => window.removeEventListener('central-logout', out);
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const h = setTimeout(() => setToast(null), toast.kind === 'error' ? 6000 : 3000);
     return () => clearTimeout(h);

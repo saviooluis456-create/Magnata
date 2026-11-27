@@ -5,7 +5,7 @@ description: Publica vídeos, responde comentários e lê métricas das contas d
 
 # Central pelo Windsor.ai (atalho no chat)
 
-Funciona enquanto a Central do Set própria (`server/`) não está no ar, e também é o **único caminho para comentários do TikTok** (o TikTok não tem API pública de comentários).
+Use **só** se a Central do Set não estiver conectada (sem `perfil-entretenimento/central.json`); senão, use a skill `central`. Funciona enquanto a Central do Set própria (`server/`) não está no ar, e também é o **único caminho para comentários do TikTok** (o TikTok não tem API pública de comentários).
 
 Leia antes: `perfil-entretenimento/04-legendas-e-hashtags.md` e `perfil-entretenimento/02-identidade-visual.md` (seção 6: voz).
 

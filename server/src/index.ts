@@ -8,7 +8,9 @@ import * as db from './db';
 import type { Env } from './env';
 import { addBenchChannel, generateReport, intel, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
 import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
-import { corsHeaders, HttpError, json, now, requireAdmin, uid } from './util';
+import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, setup, type Scope } from './auth';
+import { callback } from './providers/types';
+import { corsHeaders, HttpError, json, now, uid } from './util';
 
 const isNetwork = (x: string): x is Network => (NETWORKS as string[]).includes(x);
 
@@ -30,7 +32,19 @@ async function route(req: Request, env: Env): Promise<Response> {
   const m = req.method;
 
   if (m === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(env) });
-  if (path === '/') return json(env, { ok: true, app: 'Central do Set' });
+  if (!/^\/(api|oauth|media)(\/|$)/.test(path) && env.ASSETS) return env.ASSETS.fetch(req); // the app itself
+  if (path === '/' || path === '/api') return json(env, { ok: true, app: 'Central do Set' });
+
+  // ---------- first access / login (public, rate-limited) ----------
+  if (path === '/api/public/status' && m === 'GET') return json(env, { app: 'central-do-set', needsSetup: await needsSetup(env) });
+  if (path === '/api/setup' && m === 'POST') {
+    const b = (await req.json().catch(() => ({}))) as { code?: string; password?: string };
+    return json(env, { token: await setup(env, b.code ?? '', b.password ?? '') });
+  }
+  if (path === '/api/login' && m === 'POST') {
+    const b = (await req.json().catch(() => ({}))) as { password?: string };
+    return json(env, { token: await login(env, b.password ?? '') });
+  }
 
   // ---------- OAuth callback (browser redirect from the platform; protected by the one-time state) ----------
   const cb = path.match(/^\/oauth\/(\w+)\/callback$/);
@@ -74,7 +88,11 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   // ---------- everything below needs the admin token ----------
-  await requireAdmin(req, env);
+  const who = await authenticate(req, env);
+  const need = (s: Scope | 'admin') => require(who, s);
+  // Read-only routes need "ler"; replies "responder"; uploads/publishing "publicar"; experiments/report "estrategia";
+  // account, app and access settings are app-only (never available to a Claude key).
+  if (m === 'GET') need('ler');
   const body = async <T>() => (await req.json().catch(() => { throw new HttpError(400, 'JSON inválido.'); })) as T;
 
   if (path === '/api/status' && m === 'GET') {
@@ -87,6 +105,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   if (path === '/api/settings' && m === 'PUT') {
+    need('admin');
     const s = await body<Settings>();
     if (!['aprovacao', 'automatico', 'desligado'].includes(s.replyMode)) throw new HttpError(400, 'Modo inválido.');
     await db.saveSettings(env, { replyMode: s.replyMode, extraBlockedHashtags: (s.extraBlockedHashtags ?? []).slice(0, 200), signature: (s.signature ?? '').slice(0, 200) });
@@ -95,6 +114,7 @@ async function route(req: Request, env: Env): Promise<Response> {
 
   const start = path.match(/^\/api\/oauth\/(\w+)\/start$/);
   if (start && m === 'POST') {
+    need('admin');
     const n = start[1];
     if (!isNetwork(n)) throw new HttpError(404, 'Rede desconhecida.');
     if (!PROVIDERS[n].configured(env)) throw new HttpError(400, `Credenciais do app do ${n} não configuradas no servidor.`);
@@ -104,9 +124,10 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   const disc = path.match(/^\/api\/accounts\/(\w+)$/);
-  if (disc && m === 'DELETE' && isNetwork(disc[1])) { await db.deleteAccount(env, disc[1]); return json(env, { ok: true }); }
+  if (disc && m === 'DELETE' && isNetwork(disc[1])) { need('admin'); await db.deleteAccount(env, disc[1]); return json(env, { ok: true }); }
 
   if (path === '/api/uploads' && m === 'POST') {
+    need('publicar');
     const b = await body<{ filename: string; contentType: string; size: number }>();
     if (!/^video\/(mp4|quicktime|webm)$/.test(b.contentType)) throw new HttpError(400, 'Envie MP4, MOV ou WebM.');
     if (!(b.size > 0) || b.size > 10 * 1024 ** 3) throw new HttpError(400, 'Tamanho inválido.');
@@ -118,6 +139,7 @@ async function route(req: Request, env: Env): Promise<Response> {
 
   // Server-side caption builder (the app has the same code; exposed for Claude/automations).
   if (path === '/api/captions' && m === 'POST') {
+    need('ler');
     const s = await db.getSettings(env);
     const b = await body<Parameters<typeof buildCaptions>[0]>();
     return json(env, buildCaptions({ ...b, extraBlocked: s.extraBlockedHashtags, signature: b.signature ?? s.signature }));
@@ -126,6 +148,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/api/posts' && m === 'GET') return json(env, await db.listPosts(env));
 
   if (path === '/api/posts' && m === 'POST') {
+    need('publicar');
     const b = await body<CreatePostBody>();
     const networks = (b.networks ?? []).filter(isNetwork);
     if (!networks.length) throw new HttpError(400, 'Escolha pelo menos uma rede.');
@@ -148,6 +171,7 @@ async function route(req: Request, env: Env): Promise<Response> {
 
   const pub = path.match(/^\/api\/posts\/([\w]+)\/publish$/);
   if (pub && m === 'POST') {
+    need('publicar');
     const p = await db.getPost(env, pub[1]);
     if (!p) throw new HttpError(404, 'Post não encontrado.');
     return json(env, await publishPost(env, p));
@@ -155,6 +179,7 @@ async function route(req: Request, env: Env): Promise<Response> {
 
   const del = path.match(/^\/api\/posts\/([\w]+)$/);
   if (del && m === 'DELETE') {
+    need('admin');
     const p = await db.getPost(env, del[1]);
     if (p && !p.targets.some((t) => t.status === 'publicado' || t.status === 'privado')) await env.VIDEOS.delete(p.objectKey);
     await db.deletePost(env, del[1]);
@@ -162,10 +187,11 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   if (path === '/api/comments' && m === 'GET') return json(env, await db.listComments(env, url.searchParams.get('status') ?? undefined));
-  if (path === '/api/comments/sync' && m === 'POST') return json(env, await syncComments(env));
+  if (path === '/api/comments/sync' && m === 'POST') return need('ler'), json(env, await syncComments(env));
 
   const cm = path.match(/^\/api\/comments\/([^/]+)\/(reply|ignore)$/);
   if (cm && m === 'POST') {
+    need('responder');
     const id = decodeURIComponent(cm[1]);
     if (cm[2] === 'reply') return json(env, await replyComment(env, id, (await body<{ text: string }>()).text));
     const c = await db.getComment(env, id);
@@ -176,16 +202,17 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   if (path === '/api/metrics' && m === 'GET') return json(env, { rows: await db.listMetrics(env), posts: await db.listPosts(env, 200) });
-  if (path === '/api/metrics/sync' && m === 'POST') return json(env, { updated: await syncMetrics(env) });
+  if (path === '/api/metrics/sync' && m === 'POST') return need('ler'), json(env, { updated: await syncMetrics(env) });
 
   // ---------- inteligência ----------
   if (path === '/api/intel' && m === 'GET') return json(env, await intel(env));
-  if (path === '/api/intel/report' && m === 'POST') return json(env, await generateReport(env));
+  if (path === '/api/intel/report' && m === 'POST') return need('estrategia'), json(env, await generateReport(env));
   if (path === '/api/intel/playbook.md' && m === 'GET') {
     const d = await intel(env);
     return new Response(playbookMarkdown(d.playbook ?? (await latestPlaybook(env)), d.report), { headers: { 'Content-Type': 'text/markdown; charset=utf-8', ...corsHeaders(env) } });
   }
   if (path === '/api/experiments' && m === 'POST') {
+    need('estrategia');
     const b = await body<{ name: string; hypothesis: string; dimension: string; variants: string[]; minPerVariant?: number }>();
     const variants = (b.variants ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 3);
     if (!b.name?.trim() || variants.length < 2) throw new HttpError(400, 'Dê um nome e pelo menos 2 variantes.');
@@ -195,6 +222,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   const ex = path.match(/^\/api\/experiments\/([\w]+)$/);
   if (ex && m === 'PUT') {
+    need('estrategia');
     const { status } = await body<{ status: string }>();
     if (!['ativo', 'concluido', 'descartado'].includes(status)) throw new HttpError(400, 'Status inválido.');
     const e = (await listExperiments(env)).find((x) => x.id === ex[1]);
@@ -203,17 +231,46 @@ async function route(req: Request, env: Env): Promise<Response> {
     await saveExperiment(env, e);
     return json(env, e);
   }
-  if (path === '/api/bench' && m === 'POST') return json(env, await addBenchChannel(env, (await body<{ handle: string }>()).handle ?? ''));
-  if (path === '/api/bench/sync' && m === 'POST') return json(env, { videos: await syncBench(env) });
+  if (path === '/api/bench' && m === 'POST') return need('estrategia'), json(env, await addBenchChannel(env, (await body<{ handle: string }>()).handle ?? ''));
+  if (path === '/api/bench/sync' && m === 'POST') return need('ler'), json(env, { videos: await syncBench(env) });
   const bc = path.match(/^\/api\/bench\/([\w-]+)$/);
-  if (bc && m === 'DELETE') { await removeBenchChannel(env, bc[1]); return json(env, { ok: true }); }
+  if (bc && m === 'DELETE') { need('estrategia'); await removeBenchChannel(env, bc[1]); return json(env, { ok: true }); }
+
+  // ---------- access & connections (app only) ----------
+  if (path === '/api/me' && m === 'GET') return json(env, who);
+  if (path === '/api/password' && m === 'PUT') {
+    need('admin');
+    const b = await body<{ current: string; next: string }>();
+    await changePassword(env, b.current ?? '', b.next ?? '');
+    return json(env, { ok: true });
+  }
+  if (path === '/api/apps' && m === 'GET') {
+    need('admin');
+    return json(env, Object.fromEntries(NETWORKS.map((n) => [n, { configured: PROVIDERS[n].configured(env), redirectUri: callback(env, n) }])));
+  }
+  const appm = path.match(/^\/api\/apps\/(\w+)$/);
+  if (appm && isNetwork(appm[1])) {
+    need('admin');
+    if (m === 'PUT') { const b = await body<{ id: string; secret: string }>(); await saveAppCreds(env, appm[1], b.id ?? '', b.secret ?? ''); return json(env, { ok: true }); }
+    if (m === 'DELETE') { await deleteAppCreds(env, appm[1]); return json(env, { ok: true }); }
+  }
+  if (path === '/api/claude-keys' && m === 'GET') { need('admin'); return json(env, await listClaudeKeys(env)); }
+  if (path === '/api/claude-keys' && m === 'POST') {
+    need('admin');
+    const b = await body<{ label?: string; scopes?: Scope[] }>();
+    return json(env, await createClaudeKey(env, b.label ?? 'Claude', (b.scopes ?? ['ler']).filter((x) => ALL_SCOPES.includes(x))));
+  }
+  const ck = path.match(/^\/api\/claude-keys\/(\w+)$/);
+  if (ck && m === 'DELETE') { need('admin'); await revokeClaudeKey(env, ck[1]); return json(env, { ok: true }); }
 
   throw new HttpError(404, 'Rota não encontrada.');
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, rawEnv: Env): Promise<Response> {
+    let env = rawEnv;
     try {
+      env = await resolveEnv(rawEnv, new URL(req.url).origin);
       return await route(req, env);
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;
@@ -222,8 +279,9 @@ export default {
     }
   },
 
-  async scheduled(_ev: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(_ev: ScheduledController, rawEnv: Env, ctx: ExecutionContext) {
     ctx.waitUntil((async () => {
+      const env = await resolveEnv(rawEnv);
       await publishDue(env).catch((e) => console.error('publishDue', e));
       await syncComments(env).catch((e) => console.error('syncComments', e));
       // Metrics every hour is enough (cron runs every 15 min).

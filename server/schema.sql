@@ -89,3 +89,15 @@ CREATE TABLE IF NOT EXISTS bench_videos (
   updated_at INTEGER NOT NULL,
   data TEXT NOT NULL
 );
+
+-- ---------- Acesso (login da Central e chaves do Claude) ----------
+CREATE TABLE IF NOT EXISTS api_keys (
+  hash TEXT PRIMARY KEY,              -- SHA-256 of the token (the token itself is never stored)
+  role TEXT NOT NULL,                 -- admin (sessão do app) | claude (chave com permissões limitadas)
+  scopes TEXT NOT NULL,               -- JSON array
+  label TEXT,
+  prefix TEXT,                        -- first characters, to recognize the key in the list
+  created_at INTEGER NOT NULL,
+  last_used INTEGER,
+  expires_at INTEGER
+);

@@ -16,6 +16,32 @@ export function setConfig(c: Config | null) {
   try { if (c) localStorage.setItem(KEY, JSON.stringify({ ...c, apiUrl: c.apiUrl.replace(/\/+$/, '') })); else localStorage.removeItem(KEY); } catch { /* */ }
 }
 
+/** True when this app is being served by the Central's own server (same address as the API). */
+let sameOrigin: Promise<boolean> | null = null;
+export function detectSameOrigin(): Promise<boolean> {
+  sameOrigin ??= fetch(location.origin + '/api/public/status').then((r) => r.json()).then((j) => j?.app === 'central-do-set').catch(() => false);
+  return sameOrigin;
+}
+
+export async function publicStatus(apiUrl: string): Promise<{ needsSetup: boolean }> {
+  const r = await fetch(apiUrl.replace(/\/+$/, '') + '/api/public/status');
+  const j = await r.json().catch(() => null);
+  if (!r.ok || j?.app !== 'central-do-set') throw new Error('Não encontrei a Central neste endereço.');
+  return j;
+}
+
+async function publicPost(apiUrl: string, path: string, body: unknown): Promise<{ token: string }> {
+  const r = await fetch(apiUrl.replace(/\/+$/, '') + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j as { error?: string }).error ?? `Erro ${r.status}`);
+  return j as { token: string };
+}
+export const setupCentral = (apiUrl: string, code: string, password: string) => publicPost(apiUrl, '/api/setup', { code, password });
+export const loginCentral = (apiUrl: string, password: string) => publicPost(apiUrl, '/api/login', { password });
+
+export type Scope = 'ler' | 'responder' | 'publicar' | 'estrategia';
+export interface ClaudeKey { id: string; label: string; prefix: string; scopes: Scope[]; createdAt: number; lastUsed: number | null }
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const c = getConfig();
   if (!c) throw new Error('Configure o servidor na aba Contas.');
@@ -24,6 +50,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { Authorization: `Bearer ${c.token}`, ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...init.headers },
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && !path.startsWith('/api/password')) { setConfig(null); window.dispatchEvent(new Event('central-logout')); }
   if (!res.ok) throw new Error((data as { error?: string }).error ?? `Erro ${res.status}`);
   return data as T;
 }
@@ -61,6 +88,13 @@ export const api = {
   addBench: (handle: string) => call<{ channelId: string; title: string }>('/api/bench', { method: 'POST', body: JSON.stringify({ handle }) }),
   removeBench: (id: string) => call(`/api/bench/${id}`, { method: 'DELETE' }),
   syncBench: () => call<{ videos: number }>('/api/bench/sync', { method: 'POST' }),
+  apps: () => call<Record<Network, { configured: boolean; redirectUri: string }>>('/api/apps'),
+  saveApp: (n: Network, id: string, secret: string) => call(`/api/apps/${n}`, { method: 'PUT', body: JSON.stringify({ id, secret }) }),
+  deleteApp: (n: Network) => call(`/api/apps/${n}`, { method: 'DELETE' }),
+  claudeKeys: () => call<ClaudeKey[]>('/api/claude-keys'),
+  createClaudeKey: (label: string, scopes: Scope[]) => call<{ token: string; scopes: Scope[] }>('/api/claude-keys', { method: 'POST', body: JSON.stringify({ label, scopes }) }),
+  revokeClaudeKey: (id: string) => call(`/api/claude-keys/${id}`, { method: 'DELETE' }),
+  changePassword: (current: string, next: string) => call('/api/password', { method: 'PUT', body: JSON.stringify({ current, next }) }),
 
   /** Uploads the original file straight to storage (no recompression), with progress. */
   async upload(file: Blob, name: string, onProgress: (p: number) => void): Promise<string> {

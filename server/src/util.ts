@@ -13,7 +13,8 @@ export function uid(prefix = ''): string {
 }
 
 export function corsHeaders(env: Env): Record<string, string> {
-  const origin = new URL(env.APP_URL).origin;
+  let origin = '*';
+  try { origin = new URL(env.APP_URL).origin; } catch { /* APP_URL not resolved yet */ }
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
@@ -25,21 +26,6 @@ export function corsHeaders(env: Env): Record<string, string> {
 
 export function json(env: Env, data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...corsHeaders(env) } });
-}
-
-/** Constant-time comparison of the admin bearer token. */
-export async function requireAdmin(req: Request, env: Env): Promise<void> {
-  if (!env.ADMIN_TOKEN || env.ADMIN_TOKEN.length < 24) throw new HttpError(500, 'ADMIN_TOKEN não configurado (mínimo 24 caracteres).');
-  const got = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
-  const enc = new TextEncoder();
-  const [a, b] = await Promise.all([
-    crypto.subtle.digest('SHA-256', enc.encode(got)),
-    crypto.subtle.digest('SHA-256', enc.encode(env.ADMIN_TOKEN)),
-  ]);
-  const x = new Uint8Array(a), y = new Uint8Array(b);
-  let diff = 0;
-  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
-  if (diff !== 0) throw new HttpError(401, 'Não autorizado.');
 }
 
 // ---------- token encryption (AES-GCM, key from TOKEN_KEY secret) ----------
