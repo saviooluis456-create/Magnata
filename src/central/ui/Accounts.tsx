@@ -143,7 +143,7 @@ function QuickCard({ quick, notify, reload }: { quick: boolean; notify: Notify; 
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
-    try { await api.saveQuickKey(key); setKey(''); notify('Conexão rápida ativada! Agora é só tocar em Conectar.', 'ok'); await reload(); }
+    try { const r = await api.saveQuickKey(key); setKey(''); notify(r.linked?.length ? `Conexão rápida ativada! Já vinculei: ${r.linked.join(' e ')}.` : 'Conexão rápida ativada! Agora é só tocar em Conectar.', 'ok'); await reload(); }
     catch (e) { notify((e as Error).message, 'error'); } finally { setBusy(false); }
   };
   if (quick) {

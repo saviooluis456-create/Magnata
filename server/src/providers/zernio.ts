@@ -41,6 +41,19 @@ async function findOrCreateProfile(env: Env): Promise<string> {
   return created.profile._id;
 }
 
+/** Accounts already connected in the Zernio dashboard (so they can be linked without connecting again). */
+export async function listZernioAccounts(env: Env): Promise<{ id: string; network: Network; username?: string }[]> {
+  const r = await z<{ accounts?: Record<string, any>[] }>(env, '/accounts?status=connected&limit=100').catch(() => null);
+  const out: { id: string; network: Network; username?: string }[] = [];
+  for (const a of r?.accounts ?? []) {
+    const id = a._id ?? a.accountId ?? a.id;
+    const platform = String(a.platform ?? '');
+    if (!id || !['tiktok', 'youtube', 'instagram'].includes(platform)) continue;
+    out.push({ id: String(id), network: platform as Network, username: a.username ?? a.displayName ?? a.name });
+  }
+  return out;
+}
+
 export async function connectUrl(env: Env, network: Network, redirect: string): Promise<string> {
   const profileId = await ensureProfile(env);
   const q = new URLSearchParams({ profileId, redirect_url: redirect });

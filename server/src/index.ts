@@ -11,7 +11,7 @@ import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
 import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveWindsorKey, saveZernioKey, setup, type Scope } from './auth';
 import { windsorAccounts } from './providers/windsor';
 import { presignGet } from './storage';
-import { connectUrl, ensureProfile } from './providers/zernio';
+import { connectUrl, ensureProfile, listZernioAccounts } from './providers/zernio';
 import { callback } from './providers/types';
 import { corsHeaders, HttpError, json, now, uid } from './util';
 
@@ -272,9 +272,17 @@ async function route(req: Request, env: Env): Promise<Response> {
     const { key } = await body<{ key: string }>();
     await saveZernioKey(env, key ?? '');
     // Validate right away with the key just typed.
-    try { await ensureProfile(withKey(env, key.trim())); }
+    const keyed = withKey(env, key.trim());
+    try { await ensureProfile(keyed); }
     catch (e) { await saveZernioKey(env, null); throw e; }
-    return json(env, { ok: true });
+    // Link TikTok/YouTube already connected in the Zernio dashboard (never replaces an account connected another way).
+    const linked: string[] = [];
+    for (const a of await listZernioAccounts(keyed)) {
+      if (a.network === 'instagram' || (await db.getAccount(env, a.network))) continue;
+      await db.saveAccount(env, { network: a.network, remoteId: a.id, name: a.username, handle: a.username, token: { access: 'zernio', via: 'zernio' } });
+      linked.push(a.network);
+    }
+    return json(env, { ok: true, linked });
   }
   // Instagram through Windsor.ai (read via REST; publishing/replies by Claude in the chat)
   if (path === '/api/windsor/key' && (m === 'PUT' || m === 'DELETE')) {
@@ -283,7 +291,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     const { key, accountId } = await body<{ key: string; accountId?: string }>();
     const list = await windsorAccounts(env, (key ?? '').trim());
     if (!list.length) throw new HttpError(400, 'A chave funciona, mas nenhuma conta do Instagram está conectada no Windsor. Conecte o Instagram em onboard.windsor.ai e tente de novo.');
-    const pick = list.find((a) => a.id === accountId) ?? list.find((a) => /luiznoset/i.test(a.username)) ?? list[0];
+    const pick = list.find((a) => a.id === accountId) ?? list.find((a) => /luiznos+et/i.test(a.username)) ?? list[0];
     await saveWindsorKey(env, key);
     await db.saveAccount(env, { network: 'instagram', remoteId: pick.id, name: pick.username, handle: pick.username, token: { access: 'windsor', via: 'windsor' } });
     return json(env, { ok: true, account: pick, all: list });
