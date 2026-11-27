@@ -21,7 +21,9 @@ O servidor **nunca usa senha das redes**. Você conecta cada conta pelo botão o
 | TikTok | Vídeos públicos direto | Privados até a auditoria do TikTok |
 | Concorrentes do YouTube (Inteligência) | Precisa também do YouTube pelo app próprio | ✅ |
 
-Dá para misturar: por exemplo, Instagram e TikTok pela conexão rápida e YouTube pelo app próprio.
+Dá para misturar os modos. **Configuração do Luiz no Set: Instagram pelo Windsor.ai, TikTok e YouTube pelo Zernio.**
+
+**Instagram pelo Windsor.ai:** na aba Contas → Instagram → *Conectar pelo Windsor.ai*, cole a chave da API do Windsor. A Central puxa as métricas sozinha. O Windsor não tem API de publicação, então os posts do Instagram ficam *aguardando o Claude*: no chat, peça **publicar pendentes**, e o Claude publica pelo Windsor e marca na Central. As respostas aos comentários do Instagram também saem pelo chat.
 
 ## O que é possível em cada rede (app próprio)
 

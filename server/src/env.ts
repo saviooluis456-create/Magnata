@@ -26,6 +26,9 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   /** Zernio API key (quick connection). Usually typed in the Central instead. */
   ZERNIO_API_KEY?: string;
+  /** Windsor.ai API key (Instagram read access). Usually typed in the Central. */
+  WINDSOR_API_KEY?: string;
+  WINDSOR_API_BASE?: string;
   /** Only for local tests (mock server). */
   ZERNIO_API_BASE?: string;
 }

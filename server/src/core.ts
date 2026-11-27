@@ -8,13 +8,15 @@ import { instagram } from './providers/instagram';
 import { tiktok } from './providers/tiktok';
 import type { Provider } from './providers/types';
 import { youtube } from './providers/youtube';
+import { windsorInstagram } from './providers/windsor';
 import { ZERNIO } from './providers/zernio';
 import { HttpError, now } from './util';
 
 export const PROVIDERS: Record<Network, Provider> = { instagram, tiktok, youtube };
 
 /** The account decides the provider: quick connection (Zernio) or own developer app. */
-export const providerFor = (acc: db.Account): Provider => (acc.token.via === 'zernio' ? ZERNIO[acc.network] : PROVIDERS[acc.network]);
+export const providerFor = (acc: db.Account): Provider =>
+  acc.token.via === 'zernio' ? ZERNIO[acc.network] : acc.token.via === 'windsor' ? windsorInstagram : PROVIDERS[acc.network];
 const usable = (env: Env, acc: db.Account | null): acc is db.Account => !!acc && providerFor(acc).configured(env);
 
 /** Loads the account and refreshes its token when needed. */
@@ -30,7 +32,7 @@ export async function statuses(env: Env): Promise<AccountStatus[]> {
   return Promise.all(NETWORKS.map(async (n) => {
     const acc = await db.getAccount(env, n);
     const p = acc ? providerFor(acc) : PROVIDERS[n];
-    const base: AccountStatus = { network: n, connected: false, publicPosting: p.publicPosting(env), via: acc?.token.via === 'zernio' ? 'rapida' : acc ? 'oficial' : undefined };
+    const base: AccountStatus = { network: n, connected: false, publicPosting: p.publicPosting(env), via: acc?.token.via === 'zernio' ? 'rapida' : acc?.token.via === 'windsor' ? 'windsor' : acc ? 'oficial' : undefined };
     if (!acc || !p.configured(env)) return base;
     try {
       const a = await account(env, n);
@@ -51,7 +53,7 @@ export async function publishPost(env: Env, post: Post): Promise<Post> {
     try {
       const acc = await account(env, t.network);
       const r = await providerFor(acc).publish(env, acc, post);
-      Object.assign(t, { status: r.status, remoteId: r.remoteId, providerPostId: r.providerPostId, url: r.url, error: r.note, publishedAt: now() });
+      Object.assign(t, { status: r.status, remoteId: r.remoteId, providerPostId: r.providerPostId, url: r.url, error: r.note, publishedAt: r.status === 'aguardando' ? undefined : now() });
     } catch (e) {
       t.status = 'erro';
       t.error = (e as Error).message;

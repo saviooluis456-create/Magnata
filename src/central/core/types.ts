@@ -29,7 +29,8 @@ export interface NetworkCaption {
   youtube: { title: string; description: string; tags: string[] };
 }
 
-export type TargetStatus = 'pendente' | 'agendado' | 'enviando' | 'publicado' | 'privado' | 'erro';
+/** aguardando = waiting for Claude to publish through Windsor.ai (Instagram via Windsor has no publishing API). */
+export type TargetStatus = 'pendente' | 'agendado' | 'enviando' | 'aguardando' | 'publicado' | 'privado' | 'erro';
 
 export interface PostTarget {
   network: Network;
@@ -101,7 +102,7 @@ export interface AccountStatus {
   publicPosting: boolean;
   expiresAt?: number;
   /** 'rapida' = connected through Zernio (one tap); 'oficial' = own developer app. */
-  via?: 'rapida' | 'oficial';
+  via?: 'rapida' | 'oficial' | 'windsor';
 }
 
 export type ReplyMode = 'aprovacao' | 'automatico' | 'desligado';

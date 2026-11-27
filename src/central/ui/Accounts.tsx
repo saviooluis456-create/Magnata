@@ -3,7 +3,7 @@ import { api, detectSameOrigin, getConfig, loginCentral, publicStatus, setConfig
 import { NETWORK_LABEL, NETWORKS, type Network } from '../core/types';
 import type { Notify } from './Central';
 
-type Apps = { quick: boolean } & Record<Network, { configured: boolean; redirectUri: string }>;
+type Apps = { quick: boolean; windsor: boolean } & Record<Network, { configured: boolean; redirectUri: string }>;
 
 export function Accounts({ status, notify, refresh }: { status: StatusResponse | null; notify: Notify; refresh: () => Promise<void> }) {
   const [logged, setLogged] = useState(!!getConfig());
@@ -169,6 +169,32 @@ function QuickCard({ quick, notify, reload }: { quick: boolean; notify: Notify; 
   );
 }
 
+function WindsorConnect({ notify, reload }: { notify: Notify; reload: () => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [key, setKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { const r = await api.saveWindsorKey(key); setKey(''); notify(`Instagram conectado pelo Windsor: @${r.account.username}`, 'ok'); await reload(); }
+    catch (e) { notify((e as Error).message, 'error'); } finally { setBusy(false); }
+  };
+  if (!open) return <button className="btn connect-big windsor-btn" onClick={() => setOpen(true)}>Conectar pelo Windsor.ai</button>;
+  return (
+    <div className="windsor-box">
+      <ol className="steps">
+        <li>No Windsor (<a href="https://onboard.windsor.ai" target="_blank" rel="noreferrer">onboard.windsor.ai</a>), confira se o <b>Instagram @luiznoset</b> está conectado (conector <b>Instagram</b>, não TikTok).</li>
+        <li>Copie a sua <b>chave da API</b> do Windsor (menu da conta → API key).</li>
+        <li>Cole aqui. A Central acha a conta sozinha e passa a puxar as métricas.</li>
+      </ol>
+      <input className="c-input" type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="chave da API do Windsor" autoComplete="off" />
+      <div className="row">
+        <button className="btn primary" disabled={busy || key.trim().length < 16} onClick={save}>{busy ? 'Conectando…' : 'Conectar Instagram'}</button>
+        <button className="btn ghost" onClick={() => setOpen(false)}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 function NetworkCard({ n, status, app, quick, notify, reload }: { n: Network; status: StatusResponse | null; app?: Apps[Network]; quick: boolean; notify: Notify; reload: () => Promise<void> }) {
   const acc = status?.accounts.find((a) => a.network === n);
   const [advanced, setAdvanced] = useState(false);
@@ -197,14 +223,16 @@ function NetworkCard({ n, status, app, quick, notify, reload }: { n: Network; st
 
   return (
     <div className={`c-card net-${n}`}>
-      <div className="c-row"><h3>{NETWORK_LABEL[n]}</h3><span className={`pill ${acc?.connected ? 'ok' : ''}`}>{acc?.connected ? `Conectado${acc.via === 'rapida' ? ' ⚡' : ''}` : quick || app?.configured ? 'Pronto para conectar' : 'Desconectado'}</span></div>
+      <div className="c-row"><h3>{NETWORK_LABEL[n]}</h3><span className={`pill ${acc?.connected ? 'ok' : ''}`}>{acc?.connected ? `Conectado${acc.via === 'rapida' ? ' ⚡' : acc.via === 'windsor' ? ' · Windsor' : ''}` : quick || app?.configured ? 'Pronto para conectar' : 'Desconectado'}</span></div>
       {acc?.connected && (
         <>
           <p><b>{acc.name}</b> {acc.handle && <span className="hint">@{acc.handle.replace(/^@/, '')}</span>}{acc.followers != null && <span className="hint"> · {acc.followers.toLocaleString('pt-BR')} seguidores</span>}</p>
           {!acc.publicPosting && <p className="warn">⚠️ Posts saem como privados até a plataforma aprovar o app.</p>}
+          {acc.via === 'windsor' && <p className="hint">Pelo Windsor: as métricas chegam sozinhas. Para publicar e responder comentários, a Central deixa "aguardando o Claude" e você pede no chat: <b>publicar pendentes</b> / <b>responder comentários do Instagram</b>.</p>}
           <div className="row"><button className="btn small ghost" onClick={disconnect}>Desconectar</button><button className="btn small ghost" onClick={connect}>Reconectar</button></div>
         </>
       )}
+      {n === 'instagram' && !acc?.connected && !advanced && <WindsorConnect notify={notify} reload={reload} />}
       {!acc?.connected && !advanced && (
         quick ? (
           <>

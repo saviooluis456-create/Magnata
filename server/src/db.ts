@@ -2,7 +2,7 @@ import type { CommentItem, MetricRow, Network, Post, Settings } from '../../src/
 import type { Env } from './env';
 import { decrypt, encrypt, now } from './util';
 
-export interface Token { access: string; refresh?: string; expiresAt?: number; refreshExpiresAt?: number; via?: 'zernio'; profileId?: string }
+export interface Token { access: string; refresh?: string; expiresAt?: number; refreshExpiresAt?: number; via?: 'zernio' | 'windsor'; profileId?: string }
 export interface Account { network: Network; remoteId: string; name?: string; handle?: string; token: Token }
 
 // ---------- accounts ----------
@@ -39,6 +39,7 @@ export async function takeState(env: Env, state: string, network: Network): Prom
 export function postStatus(p: Post): string {
   const s = p.targets.map((t) => t.status);
   if (s.some((x) => x === 'enviando')) return 'processando';
+  if (s.some((x) => x === 'aguardando') && !s.some((x) => x === 'pendente' || x === 'agendado')) return 'aguardando';
   if (s.every((x) => x === 'publicado' || x === 'privado')) return 'concluido';
   if (s.some((x) => x === 'erro') && !s.some((x) => x === 'pendente' || x === 'agendado')) return 'erro';
   if (p.scheduledAt && p.scheduledAt > now()) return 'agendado';

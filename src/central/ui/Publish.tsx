@@ -87,7 +87,7 @@ export function Publish({ status, notify, onDone }: { status: StatusResponse | n
       setProgress({ phase: scheduledAt ? 'Agendando…' : 'Publicando nas redes… (o Instagram leva alguns minutos para processar)' });
       const post = await api.createPost({ objectKey, meta, networks: nets, captions, scheduledAt, editoria, hookType: hookType || undefined, coverOffsetMs: cover != null ? cover * 1000 : undefined, experiment: exp ?? undefined });
       setResult(post);
-      const ok = post.targets.filter((t) => t.status === 'publicado' || t.status === 'privado' || t.status === 'agendado').length;
+      const ok = post.targets.filter((t) => ['publicado', 'privado', 'agendado', 'aguardando'].includes(t.status)).length;
       notify(scheduledAt ? 'Agendado!' : `${ok} de ${post.targets.length} redes concluídas`, ok === post.targets.length ? 'ok' : 'error');
     } catch (e) {
       notify((e as Error).message, 'error');
@@ -218,10 +218,10 @@ export function Publish({ status, notify, onDone }: { status: StatusResponse | n
 }
 
 export function TargetLine({ t }: { t: Post['targets'][number] }) {
-  const icon = { publicado: '✅', privado: '🔒', agendado: '🕒', pendente: '⏳', enviando: '⏳', erro: '⛔' }[t.status];
+  const icon = { publicado: '✅', privado: '🔒', agendado: '🕒', pendente: '⏳', enviando: '⏳', aguardando: '🤖', erro: '⛔' }[t.status];
   return (
     <div className="target">
-      <span>{icon} <b>{NETWORK_LABEL[t.network]}</b> · {t.status}</span>
+      <span>{icon} <b>{NETWORK_LABEL[t.network]}</b> · {t.status === 'aguardando' ? 'aguardando o Claude' : t.status}</span>
       {t.url && <a href={t.url} target="_blank" rel="noreferrer">abrir</a>}
       {t.error && <small className={t.status === 'erro' ? 'err' : 'hint'}>{t.error}</small>}
     </div>

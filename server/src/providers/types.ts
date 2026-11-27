@@ -3,7 +3,7 @@ import type { Account, Token } from '../db';
 import type { Env } from '../env';
 
 export interface Connected { token: Token; remoteId: string; name?: string; handle?: string }
-export interface PublishResult { status: 'publicado' | 'privado'; remoteId?: string; providerPostId?: string; url?: string; note?: string }
+export interface PublishResult { status: 'publicado' | 'privado' | 'aguardando'; remoteId?: string; providerPostId?: string; url?: string; note?: string }
 
 export interface Provider {
   network: Network;

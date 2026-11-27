@@ -5,12 +5,12 @@ description: Publica vídeos, responde comentários e lê métricas das contas d
 
 # Central pelo Windsor.ai (atalho no chat)
 
-Use **só** se a Central do Set não estiver conectada (sem `perfil-entretenimento/central.json`); senão, use a skill `central`. Funciona enquanto a Central do Set própria (`server/`) não está no ar, e também é o **único caminho para comentários do TikTok** (o TikTok não tem API pública de comentários).
+**Configuração do perfil:** Instagram no Windsor; TikTok e YouTube no Zernio (pela Central). Com a Central conectada, a skill `central` coordena tudo e chama este fluxo só para o Instagram. Fora isso, use esta skill **só** se a Central do Set não estiver conectada (sem `perfil-entretenimento/central.json`); senão, use a skill `central`. Funciona enquanto a Central do Set própria (`server/`) não está no ar, e também é o **único caminho para comentários do TikTok** (o TikTok não tem API pública de comentários).
 
 Leia antes: `perfil-entretenimento/04-legendas-e-hashtags.md` e `perfil-entretenimento/02-identidade-visual.md` (seção 6: voz).
 
 ## 0. Descobrir as contas
-Chame `get_connectors` (servidor `Windsor_ai_for_Social_Media`). Use **só** as contas do Luiz no Set (@luiznoset / "Luiz no Set"). Existe outra conta conectada ("Laudo Noturno"): nunca publique nem responda nela por engano. Se a conta do Luiz no Set não aparecer, peça ao usuário para conectar e passe o link de `get_connector_connect_info`.
+Chame `get_connectors` (servidor `Windsor_ai_for_Social_Media`). Use **só** as contas do Luiz no Set (@luiznoset / "Luiz no Set"). Pode haver outras contas conectadas (ex.: uma conta do TikTok): para o Luiz no Set, use no Windsor **só o Instagram @luiznoset**. Nunca publique nem responda em outra conta por engano. Se a conta do Luiz no Set não aparecer, peça ao usuário para conectar e passe o link de `get_connector_connect_info`.
 
 ## 1. Publicar
 1. O vídeo precisa estar em uma **URL pública** (MP4). Se o usuário só tiver o arquivo, explique que a Central do Set (aba Publicar) é o caminho, ou peça um link direto.

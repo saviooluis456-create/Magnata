@@ -131,6 +131,12 @@ export async function saveZernioKey(env: Env, key: string | null) {
   await setSetting(env, 'zernio_key', await encrypt(env, key.trim()));
 }
 
+export async function saveWindsorKey(env: Env, key: string | null) {
+  if (key === null) { await env.DB.prepare("DELETE FROM settings WHERE key = 'windsor_key'").run(); return; }
+  if (key.trim().length < 16) throw new HttpError(400, 'Essa não parece uma chave da API do Windsor.');
+  await setSetting(env, 'windsor_key', await encrypt(env, key.trim()));
+}
+
 /** Returns env with app credentials from the database filled in, and API_URL/APP_URL derived when not set. */
 export async function resolveEnv(env: Env, origin?: string): Promise<Env> {
   const over: Record<string, string> = {};
@@ -149,6 +155,10 @@ export async function resolveEnv(env: Env, origin?: string): Promise<Env> {
   if (!env.ZERNIO_API_KEY) {
     const zk = await getSetting<string>(env, 'zernio_key');
     if (zk) { try { over.ZERNIO_API_KEY = await decrypt<string>(env, zk); } catch { /* re-type the key */ } }
+  }
+  if (!env.WINDSOR_API_KEY) {
+    const wk = await getSetting<string>(env, 'windsor_key');
+    if (wk) { try { over.WINDSOR_API_KEY = await decrypt<string>(env, wk); } catch { /* re-type the key */ } }
   }
   const isPlaceholder = (u?: string) => !u || /SEU-|SUA-/i.test(u);
   if (origin) {

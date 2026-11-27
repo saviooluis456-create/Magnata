@@ -8,7 +8,9 @@ import * as db from './db';
 import type { Env } from './env';
 import { addBenchChannel, generateReport, intel, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
 import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
-import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveZernioKey, setup, type Scope } from './auth';
+import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveWindsorKey, saveZernioKey, setup, type Scope } from './auth';
+import { windsorAccounts } from './providers/windsor';
+import { presignGet } from './storage';
 import { connectUrl, ensureProfile } from './providers/zernio';
 import { callback } from './providers/types';
 import { corsHeaders, HttpError, json, now, uid } from './util';
@@ -262,7 +264,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (path === '/api/apps' && m === 'GET') {
     need('admin');
-    return json(env, { quick: !!env.ZERNIO_API_KEY, ...Object.fromEntries(NETWORKS.map((n) => [n, { configured: PROVIDERS[n].configured(env), redirectUri: callback(env, n) }])) });
+    return json(env, { quick: !!env.ZERNIO_API_KEY, windsor: !!env.WINDSOR_API_KEY, ...Object.fromEntries(NETWORKS.map((n) => [n, { configured: PROVIDERS[n].configured(env), redirectUri: callback(env, n) }])) });
   }
   if (path === '/api/quick/key' && (m === 'PUT' || m === 'DELETE')) {
     need('admin');
@@ -273,6 +275,42 @@ async function route(req: Request, env: Env): Promise<Response> {
     try { await ensureProfile(withKey(env, key.trim())); }
     catch (e) { await saveZernioKey(env, null); throw e; }
     return json(env, { ok: true });
+  }
+  // Instagram through Windsor.ai (read via REST; publishing/replies by Claude in the chat)
+  if (path === '/api/windsor/key' && (m === 'PUT' || m === 'DELETE')) {
+    need('admin');
+    if (m === 'DELETE') { await saveWindsorKey(env, null); return json(env, { ok: true }); }
+    const { key, accountId } = await body<{ key: string; accountId?: string }>();
+    const list = await windsorAccounts(env, (key ?? '').trim());
+    if (!list.length) throw new HttpError(400, 'A chave funciona, mas nenhuma conta do Instagram está conectada no Windsor. Conecte o Instagram em onboard.windsor.ai e tente de novo.');
+    const pick = list.find((a) => a.id === accountId) ?? list.find((a) => /luiznoset/i.test(a.username)) ?? list[0];
+    await saveWindsorKey(env, key);
+    await db.saveAccount(env, { network: 'instagram', remoteId: pick.id, name: pick.username, handle: pick.username, token: { access: 'windsor', via: 'windsor' } });
+    return json(env, { ok: true, account: pick, all: list });
+  }
+  // Hand-off: posts waiting for Claude (Instagram via Windsor) and the report back.
+  if (path === '/api/handoff' && m === 'GET') {
+    need('publicar');
+    const pending = [];
+    for (const p of await db.listPosts(env, 100)) {
+      for (const t of p.targets) {
+        if (t.status !== 'aguardando') continue;
+        pending.push({ postId: p.id, network: t.network, format: p.format, scheduledAt: p.scheduledAt, caption: t.network === 'youtube' ? p.captions.youtube : p.captions[t.network].caption, videoUrl: await presignGet(env, p.objectKey, 6 * 3600), coverOffsetMs: p.coverOffsetMs });
+      }
+    }
+    return json(env, pending);
+  }
+  const tgt = path.match(/^\/api\/posts\/(\w+)\/targets\/(\w+)$/);
+  if (tgt && m === 'PUT' && isNetwork(tgt[2])) {
+    need('publicar');
+    const p = await db.getPost(env, tgt[1]);
+    const t = p?.targets.find((x) => x.network === tgt[2]);
+    if (!p || !t) throw new HttpError(404, 'Post ou rede não encontrados.');
+    const b = await body<{ status: 'publicado' | 'erro'; remoteId?: string; url?: string; error?: string }>();
+    if (!['publicado', 'erro'].includes(b.status)) throw new HttpError(400, 'Status deve ser publicado ou erro.');
+    Object.assign(t, { status: b.status, remoteId: b.remoteId ?? t.remoteId, url: b.url ?? t.url, error: b.error, publishedAt: b.status === 'publicado' ? now() : t.publishedAt });
+    await db.savePost(env, p);
+    return json(env, p);
   }
   const quick = path.match(/^\/api\/quick\/connect\/(\w+)$/);
   if (quick && m === 'POST' && isNetwork(quick[1])) {

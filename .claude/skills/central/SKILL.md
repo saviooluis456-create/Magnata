@@ -28,6 +28,20 @@ description: Conecta o Claude à Central do Set (servidor próprio do perfil Lui
 
 Contas conectadas pela ⚡ conexão rápida (Zernio) funcionam igual pelas mesmas rotas: a Central escolhe o caminho sozinha.
 
+## Configuração atual do Luiz no Set
+- **Instagram → Windsor.ai.** A Central lê as métricas pelo Windsor. **Publicar e responder comentários no Instagram é com você**, pelas ações do Windsor no chat (o Windsor não tem API de publicação).
+- **TikTok e YouTube → Zernio** (conexão rápida). Publicação, comentários e métricas são automáticos pela Central.
+
+### "publicar pendentes" (Instagram via Windsor)
+1. `GET /api/handoff` (permissão publicar): lista os posts com `status: aguardando`, com `caption`, `videoUrl` (link assinado, válido por 6h) e `coverOffsetMs`.
+2. Mostre ao usuário o que vai sair (legenda e horário) e espere o ok.
+3. Para cada item do Instagram: no servidor `Windsor_ai_for_Social_Media`, `execute_action` com connector `instagram`, ação `create_video_post`, `video_url` = `videoUrl`, `caption` = `caption`, `share_to_feed: true`, e `thumb_offset` = `coverOffsetMs` se houver. Use **só** a conta do @luiznoset.
+4. Informe a Central: `PUT /api/posts/{postId}/targets/instagram` com `{"status":"publicado","remoteId":"<media_id>","url":"<link>"}`. Se a publicação falhar: `{"status":"erro","error":"<motivo>"}`.
+5. Se o `videoUrl` tiver expirado, chame `GET /api/handoff` de novo para gerar outro link.
+
+### "responder comentários do Instagram"
+Leia os comentários pelo Windsor (`get_fields` e depois `get_data`, connector `instagram`), escreva as respostas na voz do perfil, mostre a lista e, depois do ok, envie com `reply_to_comment` do Windsor.
+
 **Nunca** tente rotas de contas, chaves de app, senhas ou chaves do Claude: são só do app, e a chave do Claude recebe 403 de propósito.
 
 ## Regras
