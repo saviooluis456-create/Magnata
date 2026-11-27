@@ -16,7 +16,8 @@ description: Conecta o Claude à Central do Set (servidor próprio do perfil Lui
 | Contas, seguidores, preferências | `GET /api/status` | ler |
 | Fila de posts | `GET /api/posts` | ler |
 | Métricas brutas | `GET /api/metrics` · atualizar: `POST /api/metrics/sync` | ler |
-| **Inteligência completa** (Índice Set, efeitos com confiança, alertas de mistura, testes A/B, decolando, playbook, concorrentes) | `GET /api/intel` | ler |
+| **Inteligência** (dados brutos; calcule com `npm run -s intel -- arquivo.json`: Índice Set, efeitos com confiança, alertas de mistura, testes, decolando, concorrentes) | `GET /api/intel/raw` | ler |
+| Atualizar links dos posts enviados | `POST /api/posts/refresh` | ler |
 | Playbook em texto | `GET /api/intel/playbook.md` | ler |
 | Comentários | `GET /api/comments?status=revisar\|rascunho\|novo\|respondido` · buscar novos: `POST /api/comments/sync` | ler |
 | Responder / ignorar | `POST /api/comments/{id}/reply` `{"text"}` · `POST /api/comments/{id}/ignore` | responder |
@@ -44,8 +45,14 @@ Leia os comentários pelo Windsor (`get_fields` e depois `get_data`, connector `
 
 **Nunca** tente rotas de contas, chaves de app, senhas ou chaves do Claude: são só do app, e a chave do Claude recebe 403 de propósito.
 
+## Modo grátis (configuração atual)
+A Central roda no plano grátis da Cloudflare, sem a chave paga da API do Claude. Então **você** faz a parte de IA, pelo chat:
+- **"responder comentários":** `POST /api/comments/sync` e depois `GET /api/comments?status=novo`. Classifique e escreva as respostas (regras de `server/src/ai.ts`), mostre a lista e, depois do ok, envie com `POST /api/comments/{id}/reply` (TikTok/YouTube). Os do Instagram saem pelo Windsor (veja acima).
+- **"analisar":** salve `GET /api/intel/raw` em `perfil-entretenimento/analises/raw-AAAA-MM-DD.json` e rode `npm run -s intel -- <arquivo>`. Depois siga a skill `analisar`: escreva o diagnóstico, reescreva o `08-playbook.md` e crie os testes na Central com `POST /api/experiments` (permissão estrategia).
+- Não use `GET /api/intel` (cálculo pesado no servidor) nem `POST /api/intel/report` (precisa da chave paga).
+
 ## Regras
 - **Responder comentários:** monte a lista "comentário → resposta" na voz do perfil (`perfil-entretenimento/02-identidade-visual.md`, seção 6; regras de `server/src/ai.ts`), mostre ao usuário e **só envie depois do ok**. Ofensivo, sensível e spam: não responda, só liste.
 - **Publicar:** sempre mostre redes, legendas e horário e espere o "pode publicar".
-- **Analisar:** com a Central conectada, a skill `analisar` usa `GET /api/intel` como fonte principal (já vem calculado com o mesmo motor de `scripts/analisar.ts`), junta pesquisa de concorrentes na web e atualiza `perfil-entretenimento/08-playbook.md`. Se a análise do repositório e a da Central divergirem, diga isso e explique por quê.
+- **Analisar:** com a Central conectada, a skill `analisar` usa `GET /api/intel/raw` + `npm run -s intel` como fonte principal (o mesmo motor da Central), junta pesquisa de concorrentes na web e atualiza `perfil-entretenimento/08-playbook.md`. Se a análise do repositório e a da Central divergirem, diga isso e explique por quê.
 - Mostre números com a fonte ("Índice Set 184, Instagram, 3 dias").

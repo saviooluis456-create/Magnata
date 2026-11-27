@@ -3,12 +3,12 @@ import { buildCaptions } from '../../src/central/core/captions';
 import { checkVideo, detectFormat } from '../../src/central/core/quality';
 import type { Editoria, Network, NetworkCaption, Post, Settings, VideoMeta } from '../../src/central/core/types';
 import { NETWORKS } from '../../src/central/core/types';
-import { PROVIDERS, publishDue, publishPost, replyComment, statuses, syncComments, syncMetrics } from './core';
+import { PROVIDERS, publishDue, publishPost, refreshSent, replyComment, statuses, syncComments, syncMetrics } from './core';
 import * as db from './db';
 import type { Env } from './env';
-import { addBenchChannel, generateReport, intel, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
-import { hasR2Keys, presignPut, verifyWorkerUrl } from './storage';
-import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveWindsorKey, saveZernioKey, setup, type Scope } from './auth';
+import { addBenchChannel, generateReport, intel, intelRaw, latestPlaybook, listExperiments, playbookMarkdown, removeBenchChannel, saveExperiment, syncBench } from './intel';
+import { exists, hasR2Keys, presignPut, receiveUpload, remove, storageReady, verifyWorkerUrl } from './storage';
+import { ALL_SCOPES, authenticate, changePassword, createClaudeKey, deleteAppCreds, listClaudeKeys, login, needsSetup, require, resolveEnv, revokeClaudeKey, saveAppCreds, saveWindsorKey, saveZernioKey, setup, kdfSalt, type Scope } from './auth';
 import { windsorAccounts } from './providers/windsor';
 import { presignGet } from './storage';
 import { connectUrl, ensureProfile, listZernioAccounts } from './providers/zernio';
@@ -41,14 +41,14 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/' || path === '/api') return json(env, { ok: true, app: 'Central do Set' });
 
   // ---------- first access / login (public, rate-limited) ----------
-  if (path === '/api/public/status' && m === 'GET') return json(env, { app: 'central-do-set', needsSetup: await needsSetup(env) });
+  if (path === '/api/public/status' && m === 'GET') return json(env, { app: 'central-do-set', needsSetup: await needsSetup(env), salt: await kdfSalt(env) });
   if (path === '/api/setup' && m === 'POST') {
-    const b = (await req.json().catch(() => ({}))) as { code?: string; password?: string };
-    return json(env, { token: await setup(env, b.code ?? '', b.password ?? '') });
+    const b = (await req.json().catch(() => ({}))) as { code?: string; proof?: string };
+    return json(env, { token: await setup(env, b.code ?? '', b.proof ?? '') });
   }
   if (path === '/api/login' && m === 'POST') {
-    const b = (await req.json().catch(() => ({}))) as { password?: string };
-    return json(env, { token: await login(env, b.password ?? '') });
+    const b = (await req.json().catch(() => ({}))) as { proof?: string };
+    return json(env, { token: await login(env, b.proof ?? '') });
   }
 
   // ---------- quick connection callback (Zernio redirects back here) ----------
@@ -86,11 +86,10 @@ async function route(req: Request, env: Env): Promise<Response> {
   // ---------- signed media links (used when there is no R2 API token) ----------
   if (path === '/api/uploads/direct' && m === 'PUT') {
     const key = await verifyWorkerUrl(env, 'upload', url);
-    if (!req.body) throw new HttpError(400, 'Arquivo vazio.');
-    await env.VIDEOS.put(key, req.body, { httpMetadata: { contentType: req.headers.get('Content-Type') ?? 'video/mp4' } });
+    await receiveUpload(env, key, req);
     return json(env, { ok: true });
   }
-  if (path === '/media' && (m === 'GET' || m === 'HEAD')) {
+  if (path === '/media' && (m === 'GET' || m === 'HEAD') && env.VIDEOS) {
     const key = await verifyWorkerUrl(env, 'media', url);
     const range = req.headers.get('Range')?.match(/bytes=(\d+)-(\d*)/);
     const obj = await env.VIDEOS.get(key, range ? { range: { offset: Number(range[1]), ...(range[2] ? { length: Number(range[2]) - Number(range[1]) + 1 } : {}) } } : undefined);
@@ -149,7 +148,9 @@ async function route(req: Request, env: Env): Promise<Response> {
     const b = await body<{ filename: string; contentType: string; size: number }>();
     if (!/^video\/(mp4|quicktime|webm)$/.test(b.contentType)) throw new HttpError(400, 'Envie MP4, MOV ou WebM.');
     if (!(b.size > 0) || b.size > 10 * 1024 ** 3) throw new HttpError(400, 'Tamanho inválido.');
-    if (!hasR2Keys(env) && b.size > 100 * 1024 ** 2) throw new HttpError(400, 'Vídeos acima de 100 MB precisam do token de API do R2 no servidor (veja o LEIA-ME).');
+    const notReady = storageReady(env);
+    if (notReady) throw new HttpError(400, notReady);
+    if (!hasR2Keys(env) && b.size > 100 * 1024 ** 2) throw new HttpError(400, 'No plano grátis, o vídeo pode ter até 100 MB. Exporte com taxa de bits um pouco menor (Reels/Shorts em 1080p cabem com folga).');
     const ext = b.contentType === 'video/quicktime' ? 'mov' : b.contentType === 'video/webm' ? 'webm' : 'mp4';
     const objectKey = `videos/${new Date().toISOString().slice(0, 10)}/${uid()}.${ext}`;
     return json(env, { objectKey, uploadUrl: await presignPut(env, objectKey, b.contentType) });
@@ -164,6 +165,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
 
   if (path === '/api/posts' && m === 'GET') return json(env, await db.listPosts(env));
+  if (path === '/api/posts/refresh' && m === 'POST') { need('ler'); return json(env, { atualizados: env.ZERNIO_API_KEY ? await refreshSent(env) : 0 }); }
 
   if (path === '/api/posts' && m === 'POST') {
     need('publicar');
@@ -171,7 +173,7 @@ async function route(req: Request, env: Env): Promise<Response> {
     const networks = (b.networks ?? []).filter(isNetwork);
     if (!networks.length) throw new HttpError(400, 'Escolha pelo menos uma rede.');
     if (!b.objectKey?.startsWith('videos/')) throw new HttpError(400, 'Vídeo inválido.');
-    await env.VIDEOS.head(b.objectKey).then((o) => { if (!o) throw new HttpError(400, 'O vídeo ainda não terminou de subir.'); });
+    if (!(await exists(env, b.objectKey))) throw new HttpError(400, 'O vídeo ainda não terminou de subir.');
     const format = detectFormat(b.meta);
     const blocking = checkVideo(b.meta, networks, format).filter((c) => c.level === 'erro');
     if (blocking.length) throw new HttpError(400, blocking.map((c) => c.message).join(' '));
@@ -199,7 +201,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (del && m === 'DELETE') {
     need('admin');
     const p = await db.getPost(env, del[1]);
-    if (p && !p.targets.some((t) => t.status === 'publicado' || t.status === 'privado')) await env.VIDEOS.delete(p.objectKey);
+    if (p && !p.targets.some((t) => t.status === 'publicado' || t.status === 'privado')) await remove(env, p.objectKey);
     await db.deletePost(env, del[1]);
     return json(env, { ok: true });
   }
@@ -223,6 +225,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/api/metrics/sync' && m === 'POST') return need('ler'), json(env, { updated: await syncMetrics(env) });
 
   // ---------- inteligência ----------
+  if (path === '/api/intel/raw' && m === 'GET') return json(env, await intelRaw(env));
   if (path === '/api/intel' && m === 'GET') return json(env, await intel(env));
   if (path === '/api/intel/report' && m === 'POST') return need('estrategia'), json(env, await generateReport(env));
   if (path === '/api/intel/playbook.md' && m === 'GET') {
@@ -258,7 +261,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === '/api/me' && m === 'GET') return json(env, who);
   if (path === '/api/password' && m === 'PUT') {
     need('admin');
-    const b = await body<{ current: string; next: string }>();
+    const b = await body<{ current: string; next: string }>(); // both are browser-derived proofs
     await changePassword(env, b.current ?? '', b.next ?? '');
     return json(env, { ok: true });
   }
@@ -363,6 +366,7 @@ export default {
     ctx.waitUntil((async () => {
       const env = await resolveEnv(rawEnv);
       await publishDue(env).catch((e) => console.error('publishDue', e));
+      if (env.ZERNIO_API_KEY) await refreshSent(env).catch((e) => console.error('refreshSent', e));
       await syncComments(env).catch((e) => console.error('syncComments', e));
       // Metrics every hour is enough (cron runs every 15 min).
       const d = new Date();

@@ -101,3 +101,12 @@ CREATE TABLE IF NOT EXISTS api_keys (
   last_used INTEGER,
   expires_at INTEGER
 );
+
+-- ---------- Vídeos guardados no Zernio (modo grátis, sem R2) ----------
+CREATE TABLE IF NOT EXISTS media (
+  key TEXT PRIMARY KEY,
+  public_url TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  content_type TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);

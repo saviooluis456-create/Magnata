@@ -4,8 +4,8 @@
 import type { CommentItem, MetricRow, Network } from '../../../src/central/core/types';
 import type { Account } from '../db';
 import type { Env } from '../env';
-import { stream } from '../storage';
-import { HttpError, now, sleep } from '../util';
+import { head, stream, zernioMediaUrl } from '../storage';
+import { HttpError, now } from '../util';
 import type { Provider } from './types';
 
 const Z_DEFAULT = 'https://zernio.com/api/v1';
@@ -62,17 +62,20 @@ export async function connectUrl(env: Env, network: Network, redirect: string): 
   return r.authUrl;
 }
 
+export function zernioPresign(env: Env, filename: string, contentType: string, size: number) {
+  return z<{ uploadUrl: string; publicUrl: string }>(env, '/media/presign', { method: 'POST', body: JSON.stringify({ filename, contentType, size }) });
+}
+
 // Upload once per video even when it goes to 3 networks in the same request.
 const uploaded = new Map<string, { url: string; at: number }>();
 async function publicMediaUrl(env: Env, objectKey: string): Promise<string> {
+  const stored = await zernioMediaUrl(env, objectKey);
+  if (stored) return stored; // free mode: the video already lives in Zernio's storage
   const hit = uploaded.get(objectKey);
   if (hit && now() - hit.at < 50 * 60_000) return hit.url;
-  const obj = await env.VIDEOS.head(objectKey);
-  if (!obj) throw new HttpError(404, 'Vídeo não encontrado no armazenamento.');
-  const type = obj.httpMetadata?.contentType ?? 'video/mp4';
-  const pre = await z<{ uploadUrl: string; publicUrl: string }>(env, '/media/presign', {
-    method: 'POST', body: JSON.stringify({ filename: objectKey.split('/').pop(), contentType: type, size: obj.size }),
-  });
+  const obj = await head(env, objectKey);
+  const type = obj.contentType;
+  const pre = await zernioPresign(env, objectKey.split('/').pop()!, type, obj.size);
   const { body, size } = await stream(env, objectKey);
   const put = await fetch(pre.uploadUrl, { method: 'PUT', headers: { 'Content-Type': type, 'Content-Length': String(size) }, body });
   if (!put.ok) throw new HttpError(502, `Falha ao enviar o vídeo para o Zernio (${put.status}).`);
@@ -121,14 +124,10 @@ export function zernio(network: Network): Provider {
       const created = await z<any>(env, '/posts', { method: 'POST', headers: { 'Idempotency-Key': `${post.id}-${network}` }, body: JSON.stringify(body) });
       const id: string | undefined = created?.post?._id;
       if (scheduled) return { status: 'publicado', providerPostId: id, note: `Agendado no Zernio para ${new Date(post.scheduledAt!).toLocaleString('pt-BR')}.` };
-      // Wait for the network to finish (Instagram/YouTube process the video), up to ~5 min.
-      let p = platformsOf(created).find((x) => x.platform === network);
-      for (let i = 0; i < 30 && id && !(p?.platformPostId || /published|failed|error/.test(p?.status ?? '')); i++) {
-        await sleep(10_000);
-        p = platformsOf(await z(env, `/posts/${id}`)).find((x) => x.platform === network);
-      }
+      // No waiting here (free plan limits): the cron fills in the link and catches failures (refreshZernioPost).
+      const p = platformsOf(created).find((x) => x.platform === network);
       if (p?.status && /failed|error/.test(p.status)) throw new HttpError(502, p.errorMessage ?? `${network} recusou a publicação.`);
-      return { status: 'publicado', remoteId: p?.platformPostId, providerPostId: id, url: p?.platformPostUrl, note: p?.platformPostId ? undefined : 'Enviado; a rede ainda está processando. O link aparece na fila em alguns minutos.' };
+      return { status: 'publicado', remoteId: p?.platformPostId, providerPostId: id, url: p?.platformPostUrl, note: p?.platformPostId ? undefined : 'Enviado. A rede está processando: o link aparece na fila em alguns minutos.' };
     },
 
     async comments(env, acc) {
@@ -174,6 +173,15 @@ export function zernio(network: Network): Provider {
       return out;
     },
   };
+}
+
+/** Status of a post already sent: platform id/link once the network finishes, or the failure reason. */
+export async function refreshZernioPost(env: Env, providerPostId: string, network: Network): Promise<{ state: 'ok' | 'erro' | 'processando'; remoteId?: string; url?: string; error?: string }> {
+  const p = platformsOf(await z(env, `/posts/${providerPostId}`)).find((x) => x.platform === network);
+  if (!p) return { state: 'processando' };
+  if (/failed|error/.test(p.status ?? '')) return { state: 'erro', error: p.errorMessage ?? `${network} recusou a publicação.` };
+  if (p.platformPostId || p.platformPostUrl) return { state: 'ok', remoteId: p.platformPostId, url: p.platformPostUrl };
+  return { state: 'processando' };
 }
 
 export const ZERNIO: Record<Network, Provider> = { instagram: zernio('instagram'), tiktok: zernio('tiktok'), youtube: zernio('youtube') };

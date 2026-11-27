@@ -2,10 +2,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
-import {
-  allLifts, benchInsights, buildPerfs, evaluateExperiment, MATURE_HOURS, velocity,
-  type BenchVideo, type Experiment, type Snapshot,
-} from '../../src/central/core/analytics';
+import { MATURE_HOURS, type BenchVideo, type Experiment, type Snapshot } from '../../src/central/core/analytics';
+import { computeIntel, type IntelRaw } from '../../src/central/core/intel-compute';
 import { SEED_MIX, SEED_RULES, type IntelPayload, type Playbook, type StrategyReport } from '../../src/central/core/intel-types';
 import { account } from './core';
 import * as db from './db';
@@ -51,24 +49,16 @@ async function benchChannels(env: Env) {
 }
 
 // ---------- dataset ----------
-export async function intel(env: Env): Promise<IntelPayload> {
-  const [posts, rows, exps, snaps, report, playbook, bv, bc] = await Promise.all([
+export async function intelRaw(env: Env): Promise<IntelRaw> {
+  const [posts, rows, experiments, snaps, report, playbook, benchVideosList, benchChannelsList] = await Promise.all([
     db.listPosts(env, 500), db.listMetrics(env), listExperiments(env), snapshots(env), latestReport(env), latestPlaybook(env), benchVideos(env), benchChannels(env),
   ]);
-  const perfs = buildPerfs(posts, rows);
-  // Re-evaluate active experiments on every read; conclude automatically when there's a verdict.
-  for (const e of exps) {
-    if (e.status !== 'ativo') continue;
-    e.result = evaluateExperiment(e, perfs);
-    if (e.result.state !== 'coletando') e.status = 'concluido';
-    await saveExperiment(env, e);
-  }
-  const recent = perfs.filter((p) => p.ageHours < 96);
-  const vel = recent.map((p) => {
-    const v = velocity(snaps, p.postId, p.network);
-    return v ? { postId: p.postId, network: p.network, title: p.title, ratio: v.ratio, views: v.views } : null;
-  }).filter((x): x is NonNullable<typeof x> => !!x).sort((a, b) => b.ratio - a.ratio);
-  return { perfs, lifts: allLifts(perfs), experiments: exps, velocity: vel, report, playbook, bench: benchInsights(bv), benchChannels: bc };
+  return { posts, rows, snapshots: snaps, experiments, report, playbook, benchVideos: benchVideosList, benchChannels: benchChannelsList };
+}
+
+/** Full computed payload (heavier on CPU; the app computes it itself from /api/intel/raw). */
+export async function intel(env: Env): Promise<IntelPayload> {
+  return computeIntel(await intelRaw(env));
 }
 
 // ---------- AI strategist ----------
@@ -106,7 +96,7 @@ Seu método:
 Escreva em português do Brasil, direto, sem enrolação. Cite números do resumo como evidência. Não invente dados que não estão no resumo.`;
 
 export async function generateReport(env: Env): Promise<StrategyReport> {
-  if (!env.ANTHROPIC_API_KEY) throw new HttpError(400, 'Configure ANTHROPIC_API_KEY no servidor para gerar a análise estratégica.');
+  if (!env.ANTHROPIC_API_KEY) throw new HttpError(400, 'No modo grátis, a análise estratégica é feita pelo Claude no chat: escreva "analisar" lá. (A geração automática aqui precisa da chave paga da API do Claude.)');
   const d = await intel(env);
   const mature = d.perfs.filter((p) => p.ageHours >= MATURE_HOURS);
   const brief = {

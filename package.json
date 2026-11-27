@@ -10,7 +10,8 @@
     "typecheck": "tsc -b",
     "test": "node tests/run-e2e.mjs",
     "test:unit": "esbuild tests/unit/*.test.ts --bundle --platform=node --format=esm --outdir=tests/out/unit --log-level=warning && node --test tests/out/unit/*.test.js",
-    "analisar": "esbuild scripts/analisar.ts --bundle --platform=node --format=esm --outfile=tests/out/analisar.mjs --log-level=warning && node tests/out/analisar.mjs"
+    "analisar": "esbuild scripts/analisar.ts --bundle --platform=node --format=esm --outfile=tests/out/analisar.mjs --log-level=warning && node tests/out/analisar.mjs",
+    "intel": "esbuild scripts/intel.ts --bundle --platform=node --format=esm --outfile=tests/out/intel.mjs --log-level=warning && node tests/out/intel.mjs"
   },
   "dependencies": {
     "@shiguredo/rnnoise-wasm": "^2025.1.5",

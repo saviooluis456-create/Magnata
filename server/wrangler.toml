@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-11-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Every 15 minutes: publish scheduled posts, sync comments, draft/auto-send replies, refresh metrics.
+# Every 15 minutes: publish scheduled posts, fill in links, sync comments, refresh metrics (free plan friendly).
 [triggers]
 crons = ["*/15 * * * *"]
 
@@ -20,9 +20,11 @@ binding = "DB"
 database_name = "central-do-set"
 database_id = "COLE_AQUI_O_ID_DO_D1"   # saída de: npx wrangler d1 create central-do-set
 
-[[r2_buckets]]
-binding = "VIDEOS"
-bucket_name = "central-do-set-videos"
+# Opcional (o R2 pede cartão na Cloudflare, mesmo no grátis). Sem ele, os vídeos ficam no armazenamento
+# gratuito do Zernio, e tudo funciona no plano 100% grátis. Para usar o R2, descomente:
+# [[r2_buckets]]
+# binding = "VIDEOS"
+# bucket_name = "central-do-set-videos"
 
 [vars]
 # Deixe vazios: o endereço é descoberto sozinho (app e API ficam no mesmo endereço).

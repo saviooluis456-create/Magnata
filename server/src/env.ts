@@ -1,6 +1,7 @@
 export interface Env {
   DB: D1Database;
-  VIDEOS: R2Bucket;
+  /** Optional (needs a card on Cloudflare). Without it, videos are stored in Zernio's free media storage. */
+  VIDEOS?: R2Bucket;
   /** Built app (Magnata Studio + Central), served from the same address as the API. */
   ASSETS?: Fetcher;
   APP_URL: string;

@@ -45,7 +45,7 @@ export function Comments({ status, notify, onSettings }: { status: StatusRespons
         <h3>Respostas com IA</h3>
         <Chips options={[{ v: 'aprovacao', label: 'Aprovação', hint: 'IA escreve, você aprova' }, { v: 'automatico', label: 'Automático', hint: 'só o que é seguro' }, { v: 'desligado', label: 'Desligado' }]}
           value={status?.settings.replyMode ?? 'aprovacao'} onChange={(v) => setMode(v as ReplyMode)} />
-        <p className="hint">O servidor busca comentários a cada 15 minutos. TikTok não tem API pública de comentários: peça ao Claude "responder comentários do TikTok" (via Windsor.ai).</p>
+        <p className="hint">A Central busca comentários a cada 15 minutos. <b>Modo grátis:</b> sem a chave paga da API do Claude, as respostas são escritas pelo Claude no chat. Escreva <b>responder comentários</b> lá: ele mostra cada resposta e só envia depois do seu ok. Os comentários do Instagram (Windsor) também passam por ele.</p>
         <button className="btn small" disabled={syncing} onClick={sync}>{syncing ? 'Buscando…' : '↻ Buscar agora'}</button>
       </div>
       <Chips options={FILTERS} value={filter} onChange={setFilter} scroll />

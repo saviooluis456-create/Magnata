@@ -148,7 +148,7 @@ export function rng(seed = 42) {
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-export function bootstrapCI(xs: number[], iters = 1000, seed = 7): [number, number] {
+export function bootstrapCI(xs: number[], iters = 500, seed = 7): [number, number] {
   if (xs.length < 2) return [-Infinity, Infinity];
   const r = rng(seed);
   const ms: number[] = [];
@@ -158,7 +158,7 @@ export function bootstrapCI(xs: number[], iters = 1000, seed = 7): [number, numb
 }
 
 /** Two-sided permutation test on the difference of means. */
-export function permutationP(a: number[], b: number[], iters = 4000, seed = 11): number {
+export function permutationP(a: number[], b: number[], iters = 2000, seed = 11): number {
   if (!a.length || !b.length) return 1;
   const obs = Math.abs(mean(a) - mean(b));
   const all = [...a, ...b];

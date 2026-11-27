@@ -8,7 +8,7 @@ export function Queue({ notify }: { notify: Notify }) {
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const load = () => api.posts().then(setPosts).catch((e) => notify(e.message, 'error'));
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { api.refreshPosts().catch(() => {}).finally(load); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const retry = async (p: Post) => {
     setBusy(p.id);
@@ -23,7 +23,7 @@ export function Queue({ notify }: { notify: Notify }) {
   if (!posts.length) return <div className="empty">Nada publicado ainda.</div>;
   return (
     <div className="central-stack">
-      <button className="btn small ghost" onClick={load}>↻ Atualizar</button>
+      <button className="btn small ghost" onClick={() => api.refreshPosts().catch(() => {}).finally(load)}>↻ Atualizar</button>
       {posts.map((p) => (
         <div key={p.id} className="c-card">
           <div className="c-row">

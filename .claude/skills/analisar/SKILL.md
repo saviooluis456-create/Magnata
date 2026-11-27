@@ -15,7 +15,7 @@ Objetivo: cada semana, o perfil fica mais inteligente. Os dados entram, as regra
 - Cite números como evidência. Não invente dados.
 
 ## 1. Coletar
-0. **Se `perfil-entretenimento/central.json` existir (Central conectada), use a skill `central`:** `GET /api/intel` já traz tudo calculado (Índice Set, efeitos, mistura de fatores, testes, decolando, concorrentes). Nesse caso, pule para o passo 3. O Windsor abaixo é a alternativa.
+0. **Se `perfil-entretenimento/central.json` existir (Central conectada), use a skill `central`:** salve `GET /api/intel/raw` e rode `npm run -s intel -- <arquivo>`, que traz tudo calculado (Índice Set, efeitos, mistura de fatores, testes, decolando, concorrentes). Nesse caso, pule para o passo 3. O Windsor abaixo é a alternativa.
 1. Windsor (`Windsor_ai_for_Social_Media`): `get_connectors`, e use **só** as contas do Luiz no Set (nunca "Laudo Noturno").
 2. Para cada rede (instagram, tiktok_organic, youtube): `get_fields` e depois `get_data` dos vídeos dos últimos 90 dias. Campos: id, título/legenda, data de publicação, duração, views/plays, curtidas, comentários, compartilhamentos, salvos, tempo médio assistido / % assistido, seguidores ganhos.
 3. Associe cada vídeo ao roteiro em `perfil-entretenimento/roteiros/` (pelo título, gancho ou legenda) para pegar **editoria, tipo de gancho e experimento/variante** do cabeçalho. Sem roteiro: classifique a editoria pelo conteúdo e deixe o gancho em branco.

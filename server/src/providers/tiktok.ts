@@ -85,7 +85,7 @@ export const tiktok: Provider = {
       const { body, size } = await stream(env, post.objectKey, { offset: start, length: end - start + 1 });
       const r = await fetch(init.data.upload_url, {
         method: 'PUT',
-        headers: { 'Content-Type': obj.httpMetadata?.contentType ?? 'video/mp4', 'Content-Length': String(size), 'Content-Range': `bytes ${start}-${end}/${obj.size}` },
+        headers: { 'Content-Type': obj.contentType, 'Content-Length': String(size), 'Content-Range': `bytes ${start}-${end}/${obj.size}` },
         body,
       });
       if (!r.ok) throw new HttpError(502, `TikTok falhou no envio da parte ${i + 1}/${plan.count}: ${(await r.text()).slice(0, 200)}`);

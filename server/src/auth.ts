@@ -19,10 +19,20 @@ function safeEqual(a: string, b: string) {
   return d === 0;
 }
 
-async function pbkdf2(password: string, salt: string): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
-  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(salt), iterations: 100_000 }, key, 256));
+/**
+ * The browser derives a "proof" from the password with PBKDF2 (210k iterations, salt below) and only the proof
+ * travels. The server stores SHA-256(proof): cheap enough for the Workers free plan (10 ms CPU), and a stolen
+ * database still needs PBKDF2 per password guess.
+ */
+export async function kdfSalt(env: Env): Promise<string> {
+  const s = await getSetting<string>(env, 'kdf_salt');
+  if (s) return s;
+  const salt = randomToken('');
+  await setSetting(env, 'kdf_salt', salt);
+  return salt;
 }
+const proofHash = (proof: string) => sha256('central-proof:' + proof);
+const validProof = (p: string) => /^[0-9a-f]{64}$/.test(p);
 
 async function getSetting<T>(env: Env, key: string): Promise<T | null> {
   const r = await env.DB.prepare('SELECT value FROM settings WHERE key = ?1').bind(key).first<{ value: string }>();
@@ -44,14 +54,19 @@ async function issue(env: Env, role: Who['role'], scopes: Scope[], label: string
   return token;
 }
 
-export async function setup(env: Env, code: string, password: string): Promise<string> {
+export async function setup(env: Env, code: string, proof: string): Promise<string> {
   if (!(await needsSetup(env))) throw new HttpError(409, 'A senha já foi criada. Entre com ela.');
   if (!env.SETUP_CODE) throw new HttpError(500, 'SETUP_CODE não configurado no servidor.');
+  await lockedOut(env);
   if (!safeEqual(code.trim(), env.SETUP_CODE)) { await failure(env); throw new HttpError(401, 'Código de instalação errado.'); }
-  if (password.length < 12) throw new HttpError(400, 'Use uma senha com pelo menos 12 caracteres.');
-  const salt = randomToken('');
-  await setSetting(env, 'admin_password', { salt, hash: await pbkdf2(password, salt) });
+  if (!validProof(proof)) throw new HttpError(400, 'Atualize o app e tente de novo.');
+  await setSetting(env, 'admin_password', { hash: await proofHash(proof) });
   return issue(env, 'admin', ALL_SCOPES, 'app', 90);
+}
+
+async function lockedOut(env: Env) {
+  const f = await getSetting<{ n: number; since: number }>(env, 'login_failures');
+  if (f && f.n >= 8 && now() - f.since < 15 * 60_000) throw new HttpError(429, 'Muitas tentativas. Espere 15 minutos.');
 }
 
 async function failure(env: Env) {
@@ -60,22 +75,20 @@ async function failure(env: Env) {
   await setSetting(env, 'login_failures', fresh);
 }
 
-export async function login(env: Env, password: string): Promise<string> {
-  const f = await getSetting<{ n: number; since: number }>(env, 'login_failures');
-  if (f && f.n >= 8 && now() - f.since < 15 * 60_000) throw new HttpError(429, 'Muitas tentativas. Espere 15 minutos.');
-  const stored = await getSetting<{ salt: string; hash: string }>(env, 'admin_password');
+export async function login(env: Env, proof: string): Promise<string> {
+  await lockedOut(env);
+  const stored = await getSetting<{ hash: string }>(env, 'admin_password');
   if (!stored) throw new HttpError(409, 'Crie a senha primeiro.');
-  if (!safeEqual(await pbkdf2(password, stored.salt), stored.hash)) { await failure(env); throw new HttpError(401, 'Senha errada.'); }
+  if (!validProof(proof) || !safeEqual(await proofHash(proof), stored.hash)) { await failure(env); throw new HttpError(401, 'Senha errada.'); }
   await setSetting(env, 'login_failures', { n: 0, since: now() });
   return issue(env, 'admin', ALL_SCOPES, 'app', 90);
 }
 
 export async function changePassword(env: Env, current: string, next: string) {
-  const stored = await getSetting<{ salt: string; hash: string }>(env, 'admin_password');
-  if (!stored || !safeEqual(await pbkdf2(current, stored.salt), stored.hash)) throw new HttpError(401, 'Senha atual errada.');
-  if (next.length < 12) throw new HttpError(400, 'Use uma senha com pelo menos 12 caracteres.');
-  const salt = randomToken('');
-  await setSetting(env, 'admin_password', { salt, hash: await pbkdf2(next, salt) });
+  const stored = await getSetting<{ hash: string }>(env, 'admin_password');
+  if (!stored || !validProof(current) || !safeEqual(await proofHash(current), stored.hash)) throw new HttpError(401, 'Senha atual errada.');
+  if (!validProof(next)) throw new HttpError(400, 'Atualize o app e tente de novo.');
+  await setSetting(env, 'admin_password', { hash: await proofHash(next) });
   await env.DB.prepare("DELETE FROM api_keys WHERE role = 'admin'").run(); // sign out every device
 }
 

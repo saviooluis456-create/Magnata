@@ -1,5 +1,6 @@
 // Client for the Central do Set API (Cloudflare Worker in /server).
 import type { Experiment } from './core/analytics';
+import { computeIntel, type IntelRaw } from './core/intel-compute';
 import type { IntelPayload, StrategyReport } from './core/intel-types';
 import type { AccountStatus, CommentItem, Editoria, MetricRow, Network, NetworkCaption, Post, Settings, VideoMeta } from './core/types';
 
@@ -23,7 +24,7 @@ export function detectSameOrigin(): Promise<boolean> {
   return sameOrigin;
 }
 
-export async function publicStatus(apiUrl: string): Promise<{ needsSetup: boolean }> {
+export async function publicStatus(apiUrl: string): Promise<{ needsSetup: boolean; salt: string }> {
   const r = await fetch(apiUrl.replace(/\/+$/, '') + '/api/public/status');
   const j = await r.json().catch(() => null);
   if (!r.ok || j?.app !== 'central-do-set') throw new Error('Não encontrei a Central neste endereço.');
@@ -36,8 +37,16 @@ async function publicPost(apiUrl: string, path: string, body: unknown): Promise<
   if (!r.ok) throw new Error((j as { error?: string }).error ?? `Erro ${r.status}`);
   return j as { token: string };
 }
-export const setupCentral = (apiUrl: string, code: string, password: string) => publicPost(apiUrl, '/api/setup', { code, password });
-export const loginCentral = (apiUrl: string, password: string) => publicPost(apiUrl, '/api/login', { password });
+/** PBKDF2 in the browser: only this derived proof is sent; the server never sees the password. */
+export async function passwordProof(apiUrl: string, password: string): Promise<string> {
+  const { salt } = await publicStatus(apiUrl);
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('central-do-set:' + salt), iterations: 210_000 }, key, 256);
+  return Array.from(new Uint8Array(bits), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+export const setupCentral = async (apiUrl: string, code: string, password: string) => publicPost(apiUrl, '/api/setup', { code, proof: await passwordProof(apiUrl, password) });
+export const loginCentral = async (apiUrl: string, password: string) => publicPost(apiUrl, '/api/login', { proof: await passwordProof(apiUrl, password) });
 
 export type Scope = 'ler' | 'responder' | 'publicar' | 'estrategia';
 export interface ClaudeKey { id: string; label: string; prefix: string; scopes: Scope[]; createdAt: number; lastUsed: number | null }
@@ -73,7 +82,9 @@ export const api = {
   ignore: (id: string) => call<CommentItem>(`/api/comments/${encodeURIComponent(id)}/ignore`, { method: 'POST' }),
   metrics: () => call<{ rows: MetricRow[]; posts: Post[] }>('/api/metrics'),
   syncMetrics: () => call<{ updated: number }>('/api/metrics/sync', { method: 'POST' }),
-  intel: () => call<IntelPayload>('/api/intel'),
+  /** Computed in the browser from raw data (keeps the server inside the free plan). */
+  intel: async (): Promise<IntelPayload> => computeIntel(await call<IntelRaw>('/api/intel/raw')),
+  refreshPosts: () => call<{ atualizados: number }>('/api/posts/refresh', { method: 'POST' }),
   report: () => call<StrategyReport>('/api/intel/report', { method: 'POST' }),
   async playbookMd(): Promise<string> {
     const c = getConfig();
@@ -99,7 +110,10 @@ export const api = {
   claudeKeys: () => call<ClaudeKey[]>('/api/claude-keys'),
   createClaudeKey: (label: string, scopes: Scope[]) => call<{ token: string; scopes: Scope[] }>('/api/claude-keys', { method: 'POST', body: JSON.stringify({ label, scopes }) }),
   revokeClaudeKey: (id: string) => call(`/api/claude-keys/${id}`, { method: 'DELETE' }),
-  changePassword: (current: string, next: string) => call('/api/password', { method: 'PUT', body: JSON.stringify({ current, next }) }),
+  async changePassword(current: string, next: string) {
+    const url = getConfig()?.apiUrl ?? '';
+    return call('/api/password', { method: 'PUT', body: JSON.stringify({ current: await passwordProof(url, current), next: await passwordProof(url, next) }) });
+  },
 
   /** Uploads the original file straight to storage (no recompression), with progress. */
   async upload(file: Blob, name: string, onProgress: (p: number) => void): Promise<string> {

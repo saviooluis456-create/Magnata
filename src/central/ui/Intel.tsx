@@ -44,7 +44,7 @@ export function Intel({ notify }: { notify: Notify }) {
             <h4>Ações da semana</h4>
             <ol className="acts">{d.report.acoes.map((a, i) => <li key={i}><b>{a.acao}</b><small>Por quê: {a.porque} · Medir: {a.como_medir}</small></li>)}</ol>
           </>
-        ) : <p className="hint">Nenhuma análise ainda. Ela roda toda segunda às 9h, ou agora pelo botão. Com poucos dados, ela usa concorrentes e a pesquisa inicial.</p>}
+        ) : <p className="hint">Nenhuma análise ainda. <b>Modo grátis:</b> no chat com o Claude, escreva <b>analisar</b>: ele lê estes dados, escreve o diagnóstico, atualiza o playbook e propõe os testes. (Com a chave paga da API do Claude, ela roda sozinha toda segunda.)</p>}
         <button className="btn primary" disabled={busy === 'rep'} onClick={() => run('rep', api.report, 'Análise pronta: playbook e experimentos atualizados')}>
           {busy === 'rep' ? 'Analisando tudo… (até 2 min)' : 'Gerar análise estratégica agora'}</button>
       </div>

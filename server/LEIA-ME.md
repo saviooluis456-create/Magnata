@@ -36,20 +36,27 @@ Dá para misturar os modos. **Configuração do Luiz no Set: Instagram pelo Wind
 
 Aprovação (auditoria) do TikTok e do Google: é gratuita, mas pede formulário, vídeo de demonstração do app e política de privacidade. Leva de alguns dias a algumas semanas. Até lá, o vídeo chega privado e você toca em "público" no app.
 
-## Custos
+## Custos: modo 100% grátis (padrão)
 
-- **Cloudflare Workers Paid: US$ 5/mês (recomendado).** O plano grátis tem limites que travam a espera pelo processamento do Instagram.
-- **R2 (vídeos):** 10 GB grátis; depois cerca de US$ 0,015 por GB/mês. Crie uma regra para apagar vídeos com mais de 30 dias (item 2).
-- **IA nos comentários (Claude):** paga por uso, centavos de dólar por dezena de comentários. Opcional.
-- Apps de desenvolvedor (Meta, Google, TikTok): grátis.
+| Peça | Plano | Custo |
+|---|---|---|
+| Cloudflare Workers + D1 (app, servidor, banco, tarefas a cada 15 min) | Free (sem cartão) | R$ 0 |
+| Armazenamento dos vídeos | Espaço grátis do Zernio (no lugar do R2, que pede cartão) | R$ 0 |
+| TikTok e YouTube | Zernio, 2 contas grátis | R$ 0 |
+| Instagram | Windsor.ai (plano atual) | R$ 0 |
+| IA dos comentários e estrategista | Feitos pelo Claude no chat, dentro do seu plano | R$ 0 |
+
+Limites do modo grátis: vídeo de até **100 MB** por envio (sobra para Reels/Shorts em 1080p) e posts do Instagram publicados pelo Claude no chat ("publicar pendentes"). A análise pesada roda no celular, não no servidor. Responder comentários pelo Zernio pode exigir um complemento pago deles; nesse caso, o Claude responde pelo chat onde for possível.
+
+Opcionais pagos, se um dia quiser: R2 (vídeos maiores), chave da API do Claude (IA automática no servidor) e mais contas no Zernio.
 
 ---
 
 ## Passo a passo
 
 ### Jeito fácil: o Claude coloca no ar
-1. Crie uma conta grátis em **dash.cloudflare.com** e assine o **Workers Paid** (US$ 5/mês).
-2. Em **My Profile → API Tokens → Create Token**, use o modelo **Edit Cloudflare Workers** e adicione as permissões **D1: Edit** e **Workers R2 Storage: Edit**.
+1. Crie uma conta grátis em **dash.cloudflare.com** (o plano Free basta, sem cartão).
+2. Em **My Profile → API Tokens → Create Token**, use o modelo **Edit Cloudflare Workers** e adicione a permissão **D1: Edit**.
 3. No chat, peça ao Claude: **"coloca a Central no ar"**. Ele abre um formulário seguro para o token (nunca cole no chat), cria o banco e o armazenamento, publica o app e o servidor e te passa:
    - o **endereço da Central** (`https://central-do-set.xxxx.workers.dev`);
    - o **código de instalação** (uso único).
@@ -63,7 +70,6 @@ Aprovação (auditoria) do TikTok e do Google: é gratuita, mas pede formulário
 cd server && npm install
 npx wrangler login
 npx wrangler d1 create central-do-set            # cole o database_id no wrangler.toml
-npx wrangler r2 bucket create central-do-set-videos
 npm run db:init
 npx wrangler secret put TOKEN_KEY                 # resultado de: openssl rand -base64 32
 npx wrangler secret put SETUP_CODE                # um código qualquer de uso único

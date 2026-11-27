@@ -9,7 +9,7 @@ import { tiktok } from './providers/tiktok';
 import type { Provider } from './providers/types';
 import { youtube } from './providers/youtube';
 import { windsorInstagram } from './providers/windsor';
-import { ZERNIO } from './providers/zernio';
+import { refreshZernioPost, ZERNIO } from './providers/zernio';
 import { HttpError, now } from './util';
 
 export const PROVIDERS: Record<Network, Provider> = { instagram, tiktok, youtube };
@@ -137,4 +137,22 @@ export async function syncMetrics(env: Env): Promise<number> {
     }
   }
   return count;
+}
+
+/** Fills in links (and catches failures) for posts sent through Zernio, which publishes in the background. */
+export async function refreshSent(env: Env): Promise<number> {
+  let changed = 0;
+  for (const p of await db.listPosts(env, 50)) {
+    let dirty = false;
+    for (const t of p.targets) {
+      if (!t.providerPostId || t.url || t.status !== 'publicado' || (t.publishedAt && now() - t.publishedAt > 3 * 86400_000)) continue;
+      const r = await refreshZernioPost(env, t.providerPostId, t.network).catch(() => null);
+      if (!r || r.state === 'processando') continue;
+      if (r.state === 'ok') Object.assign(t, { remoteId: r.remoteId ?? t.remoteId, url: r.url, error: undefined });
+      else Object.assign(t, { status: 'erro', error: r.error });
+      dirty = true;
+    }
+    if (dirty) { await db.savePost(env, p); changed++; }
+  }
+  return changed;
 }
