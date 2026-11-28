@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | 1 | **A morte da Bianca**: o que a série fez diferente do livro | Final explicado + história | ~1m29 | Do ep. 4 (aviso no início) |
 | 2 | **Os bastidores da cena da Bianca**: "é assim que se parece quando o herói falha" | Bastidores | ~1m19 | Do ep. 4 (aviso no início) |
-| 3 | **Os deuses vão votar para matar o Percy**, e o deus que mais o odeia foi quem o salvou | Polêmica / personagens | ~1m20 | Dos eps. 3 e 4 (aviso no início) |
+| 3 | **Os deuses vão votar para matar o Percy**, e o deus que mais o odeia foi quem o colocou na missão | Polêmica / personagens | ~1m20 | Dos eps. 3 e 4 (aviso no início) |
 | 4 | **O segredo dos irmãos di Angelo**: as pistas que a série escondeu | Teoria / pistas | ~1m21 | Dos eps. 3 e 4 + dos livros (dois avisos) |
 | 5 | **Luke comeu a maçã dourada**: o que isso significa | Personagem | ~1m07 | Do ep. 3 (aviso no início) |
 
